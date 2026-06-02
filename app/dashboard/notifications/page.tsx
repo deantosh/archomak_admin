@@ -1,0 +1,47 @@
+'use client';
+
+import { Bell, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { mockNotifications } from '@/lib/mock-data';
+
+export default function NotificationsPage() {
+  return (
+    <div className="space-y-6 p-4 lg:p-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Notifications</h1>
+          <p className="text-muted-foreground mt-1">Recent alerts and updates</p>
+        </div>
+        <Button variant="outline">Mark All as Read</Button>
+      </div>
+
+      <div className="space-y-3">
+        {mockNotifications.map((notif) => (
+          <div
+            key={notif.id}
+            className={`bg-card border ${notif.read ? 'border-border' : 'border-primary/50 bg-primary/5'} rounded-2xl p-4 flex items-start justify-between hover:border-primary/30 transition-colors`}
+          >
+            <div className="flex items-start gap-3 flex-1">
+              <div className="text-2xl mt-1">{notif.icon}</div>
+              <div className="flex-1">
+                <p className="font-semibold text-foreground">{notif.title}</p>
+                <p className="text-sm text-muted-foreground mt-1">{notif.message}</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {new Date(notif.timestamp).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+              </div>
+            </div>
+            <button className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground">
+              <Trash2 size={16} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
