@@ -1,18 +1,48 @@
-import { Sidebar } from '@/components/dashboard/sidebar';
-import { DashboardHeader } from '@/components/dashboard/header';
+import { redirect } from 'next/navigation'
 
-export default function DashboardLayout({
+import { DashboardHeader } from '@/components/dashboard/header'
+import { Sidebar } from '@/components/dashboard/sidebar'
+import { getDashboardAccess } from '@/lib/auth/access'
+import { hasSupabaseEnv } from '@/lib/supabase/config'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+
+export default async function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
+  if (!hasSupabaseEnv()) {
+    redirect('/admin/login?error=config')
+  }
+
+  const supabase = await createSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/admin/login')
+  }
+
+  const access = await getDashboardAccess(user)
+
+  if (!access.allowed) {
+    redirect('/admin/login?error=access-denied')
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <DashboardHeader />
+      <DashboardHeader
+        user={{
+          displayName: access.displayName,
+          email: user.email ?? '',
+          roleLabel: access.roleLabel ?? 'Staff',
+        }}
+      />
       <main className="pt-16 lg:pl-64 pb-6">
         <div className="h-full">{children}</div>
       </main>
     </div>
-  );
+  )
 }

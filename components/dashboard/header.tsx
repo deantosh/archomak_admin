@@ -1,7 +1,6 @@
 'use client';
 
-import { Bell, Search, Settings, LogOut } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Bell, Search, Settings } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,8 +8,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { SignOutButton } from '@/components/auth/sign-out-button';
 
-export function DashboardHeader() {
+type DashboardHeaderProps = {
+  user: {
+    displayName: string
+    email: string
+    roleLabel: string
+  }
+}
+
+export function DashboardHeader({ user }: DashboardHeaderProps) {
+  const initials = user.displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('')
+    .slice(0, 2) || 'AA'
+
   return (
     <header className="fixed top-0 right-0 left-0 lg:left-64 h-16 bg-card border-b border-border z-30">
       <div className="h-full px-4 lg:px-6 flex items-center justify-between gap-4">
@@ -36,13 +52,14 @@ export function DashboardHeader() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors font-semibold text-sm">
-                AO
+                {initials}
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <div className="px-2 py-1.5 text-sm">
-                <p className="font-semibold text-foreground">Adeyemi Oluwaseun</p>
-                <p className="text-muted-foreground text-xs">Admin</p>
+                <p className="font-semibold text-foreground">{user.displayName}</p>
+                <p className="text-muted-foreground text-xs">{user.email}</p>
+                <p className="text-muted-foreground text-xs">{user.roleLabel}</p>
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
@@ -54,9 +71,8 @@ export function DashboardHeader() {
                 Preferences
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive">
-                <LogOut size={16} className="mr-2" />
-                Sign Out
+              <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
+                <SignOutButton className="flex w-full items-center" />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

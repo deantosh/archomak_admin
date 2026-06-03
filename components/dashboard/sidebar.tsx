@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
   Package,
@@ -76,8 +77,14 @@ export function Sidebar() {
       >
         {/* Logo Area */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
-          <div className={`font-bold text-xl text-sidebar-primary transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
-            🏢
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+              <Image src="/icon.svg" alt="Archomak logo" width={24} height={24} />
+            </div>
+            <div className={`transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'} ${isOpen ? 'block' : 'hidden'}`}>
+              <p className="text-sm font-semibold text-white">Archomak</p>
+              <p className="text-[11px] text-sidebar-foreground/60">Admin Dashboard</p>
+            </div>
           </div>
           <button
             onClick={toggleSidebar}
