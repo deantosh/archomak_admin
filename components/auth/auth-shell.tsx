@@ -18,8 +18,15 @@ export function AuthShell({ children }: AuthShellProps) {
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent_28%,transparent)]" />
           <div className="relative z-10">
             <div className="mb-10 flex items-center gap-4">
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-3 shadow-[0_24px_60px_rgba(0,0,0,0.25)] backdrop-blur">
-                <Image src="/icon.svg" alt="Archomak logo" width={56} height={56} priority />
+              <div className="rounded-3xl border border-white/10 bg-white/95 p-3 shadow-[0_24px_60px_rgba(0,0,0,0.25)] backdrop-blur">
+                <Image
+                  src="/archomak-logo.png"
+                  alt="Archomak logo"
+                  width={64}
+                  height={48}
+                  priority
+                  className="h-auto w-16"
+                />
               </div>
               <div>
                 <p className="text-2xl font-semibold tracking-tight text-white">Archomak</p>
@@ -63,8 +70,15 @@ export function AuthShell({ children }: AuthShellProps) {
         <section className="flex min-h-screen items-center justify-center px-4 py-10 sm:px-6 lg:px-10">
           <div className="w-full max-w-md">
             <div className="mb-8 flex items-center gap-4 lg:hidden">
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-3 shadow-[0_24px_60px_rgba(0,0,0,0.25)] backdrop-blur">
-                <Image src="/icon.svg" alt="Archomak logo" width={44} height={44} priority />
+              <div className="rounded-3xl border border-white/10 bg-white/95 p-2.5 shadow-[0_24px_60px_rgba(0,0,0,0.25)] backdrop-blur">
+                <Image
+                  src="/archomak-logo.png"
+                  alt="Archomak logo"
+                  width={56}
+                  height={42}
+                  priority
+                  className="h-auto w-14"
+                />
               </div>
               <div>
                 <p className="text-xl font-semibold text-white">Archomak</p>
