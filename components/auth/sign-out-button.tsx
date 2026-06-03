@@ -4,7 +4,7 @@ import { LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { clearSessionCookies } from '@/lib/supabase/client'
 
 type SignOutButtonProps = {
   className?: string
@@ -16,10 +16,7 @@ export function SignOutButton({ className }: SignOutButtonProps) {
 
   const handleSignOut = async () => {
     setLoading(true)
-
-    const supabase = createSupabaseBrowserClient()
-    await supabase.auth.signOut()
-
+    clearSessionCookies()
     router.replace('/admin/login')
     router.refresh()
   }

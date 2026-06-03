@@ -2,17 +2,15 @@ import { redirect } from 'next/navigation'
 
 import { getDashboardAccess } from '@/lib/auth/access'
 import { hasSupabaseEnv } from '@/lib/supabase/config'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { clearServerSession, getAuthenticatedUser } from '@/lib/supabase/server'
 
 export default async function Page() {
   if (!hasSupabaseEnv()) {
     redirect('/admin/login?error=config')
   }
 
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await getAuthenticatedUser()
+  const user = session?.user
 
   if (!user) {
     redirect('/admin/login')
@@ -21,6 +19,7 @@ export default async function Page() {
   const access = await getDashboardAccess(user)
 
   if (!access.allowed) {
+    await clearServerSession()
     redirect('/admin/login?error=access-denied')
   }
 

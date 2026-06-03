@@ -1,6 +1,4 @@
-import type { User } from '@supabase/supabase-js'
-
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/supabase/server'
 
 const DEFAULT_ALLOWED_ROLES = [
   'admin',
@@ -12,6 +10,13 @@ const DEFAULT_ALLOWED_ROLES = [
   'operations',
   'ops',
 ]
+
+export type AuthenticatedUser = {
+  id: string
+  email?: string
+  app_metadata?: Record<string, unknown>
+  user_metadata?: Record<string, unknown>
+}
 
 type AccessResult = {
   allowed: boolean
@@ -31,12 +36,15 @@ function toTitleCase(value: string) {
     .join(' ')
 }
 
-function getDisplayName(user: User) {
-  const metadata = {
-    ...user.user_metadata,
-    ...user.app_metadata,
+function getMetadata(user: AuthenticatedUser) {
+  return {
+    ...(user.user_metadata ?? {}),
+    ...(user.app_metadata ?? {}),
   } as Record<string, unknown>
+}
 
+function getDisplayName(user: AuthenticatedUser) {
+  const metadata = getMetadata(user)
   const firstName = normalizeString(metadata.first_name)
   const lastName = normalizeString(metadata.last_name)
 
@@ -50,11 +58,8 @@ function getDisplayName(user: User) {
   return candidate || 'Archomak Staff'
 }
 
-function extractRoles(user: User) {
-  const metadata = {
-    ...user.user_metadata,
-    ...user.app_metadata,
-  } as Record<string, unknown>
+function extractRoles(user: AuthenticatedUser) {
+  const metadata = getMetadata(user)
 
   const roleValues = [
     metadata.role,
@@ -84,12 +89,12 @@ function extractRoles(user: User) {
   return Array.from(new Set(roles.filter(Boolean)))
 }
 
-function getMetadataRoleLabel(user: User) {
+function getMetadataRoleLabel(user: AuthenticatedUser) {
   const [firstRole] = extractRoles(user)
   return firstRole ? toTitleCase(firstRole) : undefined
 }
 
-function isAllowedByMetadata(user: User) {
+function isAllowedByMetadata(user: AuthenticatedUser) {
   const allowedRoles = (
     process.env.SUPABASE_ALLOWED_ADMIN_ROLES?.split(',') ?? DEFAULT_ALLOWED_ROLES
   )
@@ -101,14 +106,19 @@ function isAllowedByMetadata(user: User) {
   return roles.some((role) => allowedRoles.includes(role))
 }
 
-async function isAllowedByConfiguredTable(user: User) {
+async function isAllowedByConfiguredTable(user: AuthenticatedUser) {
   const table = process.env.SUPABASE_ACCESS_TABLE
 
   if (!table) {
     return { allowed: false as const }
   }
 
-  const supabase = await createSupabaseServerClient()
+  const session = await getAuthenticatedUser()
+
+  if (!session?.accessToken) {
+    return { allowed: false as const }
+  }
+
   const userIdColumn = process.env.SUPABASE_ACCESS_USER_ID_COLUMN ?? 'user_id'
   const emailColumn = process.env.SUPABASE_ACCESS_EMAIL_COLUMN ?? 'email'
   const activeColumn = process.env.SUPABASE_ACCESS_ACTIVE_COLUMN
@@ -127,31 +137,49 @@ async function isAllowedByConfiguredTable(user: User) {
 
   const attempts: Array<{ column: string; value: string }> = []
 
-  if (userIdColumn) {
-    attempts.push({ column: userIdColumn, value: user.id })
-  }
+  attempts.push({ column: userIdColumn, value: user.id })
 
   if (user.email) {
     attempts.push({ column: emailColumn, value: user.email })
   }
 
   for (const attempt of attempts) {
-    let query = supabase.from(table).select(selectColumns).eq(attempt.column, attempt.value).limit(1)
+    const filters = new URLSearchParams({
+      select: selectColumns,
+      [attempt.column]: `eq.${attempt.value}`,
+      limit: '1',
+    })
 
     if (activeColumn) {
-      query = query.eq(activeColumn, true)
+      filters.set(activeColumn, 'eq.true')
     }
 
     if (roleColumn && allowedRoles.length > 0) {
-      query = query.in(roleColumn, allowedRoles)
+      filters.set(roleColumn, `in.(${allowedRoles.join(',')})`)
     }
 
-    const { data, error } = await query.maybeSingle()
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/${table}?${filters.toString()}`,
+      {
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+        cache: 'no-store',
+      },
+    )
 
-    if (!error && data) {
+    if (!response.ok) {
+      continue
+    }
+
+    const rows = (await response.json()) as Array<Record<string, unknown>>
+    const row = rows[0]
+
+    if (row) {
       const roleLabel =
-        roleColumn && typeof data[roleColumn] === 'string'
-          ? toTitleCase(String(data[roleColumn]))
+        roleColumn && typeof row[roleColumn] === 'string'
+          ? toTitleCase(String(row[roleColumn]))
           : undefined
 
       return {
@@ -164,7 +192,7 @@ async function isAllowedByConfiguredTable(user: User) {
   return { allowed: false as const }
 }
 
-export async function getDashboardAccess(user: User): Promise<AccessResult> {
+export async function getDashboardAccess(user: AuthenticatedUser): Promise<AccessResult> {
   const displayName = getDisplayName(user)
 
   if (isAllowedByMetadata(user)) {

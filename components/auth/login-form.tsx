@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { clearSessionCookies, fetchUser, signInWithPassword } from '@/lib/supabase/client'
 import { hasSupabaseEnv } from '@/lib/supabase/config'
 
 const loginSchema = z.object({
@@ -61,19 +61,27 @@ export function LoginForm() {
       return
     }
 
-    const supabase = createSupabaseBrowserClient()
     const rememberedEmail = window.localStorage.getItem('archomak-remembered-email')
     const error = searchParams.get('error')
 
     if (error === 'access-denied') {
-      void supabase.auth.signOut()
+      clearSessionCookies()
     } else {
-      void supabase.auth.getUser().then(({ data }) => {
-        if (data.user) {
-          router.replace('/dashboard')
-          router.refresh()
-        }
-      })
+      const accessToken = document.cookie
+        .split('; ')
+        .find((cookie) => cookie.startsWith('archomak_access_token='))
+        ?.split('=')[1]
+
+      if (accessToken) {
+        void fetchUser(decodeURIComponent(accessToken)).then((user) => {
+          if (user) {
+            router.replace('/dashboard')
+            router.refresh()
+          }
+        })
+      } else {
+        clearSessionCookies()
+      }
     }
 
     if (rememberedEmail) {
@@ -110,11 +118,7 @@ export function LoginForm() {
     setErrorMessage(null)
 
     try {
-      const supabase = createSupabaseBrowserClient()
-      const { error } = await supabase.auth.signInWithPassword({
-        email: values.email,
-        password: values.password,
-      })
+      const { error } = await signInWithPassword(values.email, values.password)
 
       if (error) {
         setErrorMessage(LOGIN_ERROR)

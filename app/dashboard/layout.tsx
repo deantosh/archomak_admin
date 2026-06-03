@@ -4,7 +4,7 @@ import { DashboardHeader } from '@/components/dashboard/header'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { getDashboardAccess } from '@/lib/auth/access'
 import { hasSupabaseEnv } from '@/lib/supabase/config'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { clearServerSession, getAuthenticatedUser } from '@/lib/supabase/server'
 
 export default async function DashboardLayout({
   children,
@@ -15,10 +15,8 @@ export default async function DashboardLayout({
     redirect('/admin/login?error=config')
   }
 
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await getAuthenticatedUser()
+  const user = session?.user
 
   if (!user) {
     redirect('/admin/login')
@@ -27,6 +25,7 @@ export default async function DashboardLayout({
   const access = await getDashboardAccess(user)
 
   if (!access.allowed) {
+    await clearServerSession()
     redirect('/admin/login?error=access-denied')
   }
 

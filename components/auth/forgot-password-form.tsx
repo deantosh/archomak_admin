@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { resetPasswordForEmail } from '@/lib/supabase/client'
 import { hasSupabaseEnv } from '@/lib/supabase/config'
 
 const forgotPasswordSchema = z.object({
@@ -53,11 +53,8 @@ export function ForgotPasswordForm() {
     }
 
     try {
-      const supabase = createSupabaseBrowserClient()
       const redirectTo = `${window.location.origin}/admin/reset-password`
-      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-        redirectTo,
-      })
+      const { error } = await resetPasswordForEmail(values.email, redirectTo)
 
       if (error) {
         setErrorMessage('We could not send the reset link right now. Please try again.')
