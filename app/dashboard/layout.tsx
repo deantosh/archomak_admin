@@ -12,20 +12,20 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   if (!hasSupabaseEnv()) {
-    redirect('/login?error=config')
+    redirect('/?error=config')
   }
 
   const session = await getAuthenticatedUser()
   const user = session?.user
 
   if (!user) {
-    redirect('/login')
+    redirect('/')
   }
 
   const access = await getDashboardAccess(user)
 
   if (!access.allowed) {
-    redirect('/login?error=access-denied')
+    redirect('/?error=access-denied')
   }
 
   return (

@@ -134,7 +134,7 @@ export function ForgotPasswordForm() {
 
         <div className="mt-6">
           <Link
-            href="/login"
+            href="/"
             className="inline-flex items-center gap-2 text-sm text-emerald-300 transition hover:text-emerald-200"
           >
             <ArrowLeft className="size-4" />

@@ -17,7 +17,7 @@ export function SignOutButton({ className }: SignOutButtonProps) {
   const handleSignOut = async () => {
     setLoading(true)
     clearSessionCookies()
-    router.replace('/login')
+    router.replace('/')
     router.refresh()
   }
 
