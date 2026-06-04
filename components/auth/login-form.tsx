@@ -75,7 +75,7 @@ export function LoginForm() {
       if (accessToken) {
         void fetchUser(decodeURIComponent(accessToken)).then((user) => {
           if (user) {
-            router.replace('/dashboard')
+            router.replace('/')
             router.refresh()
           }
         })
@@ -131,7 +131,7 @@ export function LoginForm() {
         window.localStorage.removeItem('archomak-remembered-email')
       }
 
-      router.replace('/dashboard')
+      router.replace('/')
       router.refresh()
     } catch {
       setErrorMessage(LOGIN_ERROR)
