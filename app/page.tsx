@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 
 import { getDashboardAccess } from '@/lib/auth/access'
 import { hasSupabaseEnv } from '@/lib/supabase/config'
-import { clearServerSession, getAuthenticatedUser } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/supabase/server'
 
 export default async function Page() {
   if (!hasSupabaseEnv()) {
@@ -19,7 +19,6 @@ export default async function Page() {
   const access = await getDashboardAccess(user)
 
   if (!access.allowed) {
-    await clearServerSession()
     redirect('/login?error=access-denied')
   }
 

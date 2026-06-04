@@ -4,7 +4,7 @@ import { DashboardHeader } from '@/components/dashboard/header'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { getDashboardAccess } from '@/lib/auth/access'
 import { hasSupabaseEnv } from '@/lib/supabase/config'
-import { clearServerSession, getAuthenticatedUser } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/supabase/server'
 
 export default async function DashboardLayout({
   children,
@@ -25,7 +25,6 @@ export default async function DashboardLayout({
   const access = await getDashboardAccess(user)
 
   if (!access.allowed) {
-    await clearServerSession()
     redirect('/login?error=access-denied')
   }
 
