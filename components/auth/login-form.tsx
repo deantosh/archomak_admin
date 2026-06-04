@@ -192,7 +192,7 @@ export function LoginForm() {
                   <div className="flex items-center justify-between gap-4">
                     <FormLabel className="text-slate-200">Password</FormLabel>
                     <Link
-                      href="/admin/forgot-password"
+                      href="/forgot-password"
                       className="text-sm text-emerald-300 transition hover:text-emerald-200"
                     >
                       Forgot Password?

@@ -53,7 +53,7 @@ export function ForgotPasswordForm() {
     }
 
     try {
-      const redirectTo = `${window.location.origin}/admin/reset-password`
+      const redirectTo = `${window.location.origin}/reset-password`
       const { error } = await resetPasswordForEmail(values.email, redirectTo)
 
       if (error) {
@@ -134,7 +134,7 @@ export function ForgotPasswordForm() {
 
         <div className="mt-6">
           <Link
-            href="/admin/login"
+            href="/login"
             className="inline-flex items-center gap-2 text-sm text-emerald-300 transition hover:text-emerald-200"
           >
             <ArrowLeft className="size-4" />

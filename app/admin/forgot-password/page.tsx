@@ -1,12 +1,7 @@
-import { AuthShell } from '@/components/auth/auth-shell'
-import { ForgotPasswordForm } from '@/components/auth/forgot-password-form'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
 export default function ForgotPasswordPage() {
-  return (
-    <AuthShell>
-      <ForgotPasswordForm />
-    </AuthShell>
-  )
+  redirect('/forgot-password')
 }

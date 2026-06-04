@@ -6,21 +6,21 @@ import { clearServerSession, getAuthenticatedUser } from '@/lib/supabase/server'
 
 export default async function Page() {
   if (!hasSupabaseEnv()) {
-    redirect('/admin/login?error=config')
+    redirect('/login?error=config')
   }
 
   const session = await getAuthenticatedUser()
   const user = session?.user
 
   if (!user) {
-    redirect('/admin/login')
+    redirect('/login')
   }
 
   const access = await getDashboardAccess(user)
 
   if (!access.allowed) {
     await clearServerSession()
-    redirect('/admin/login?error=access-denied')
+    redirect('/login?error=access-denied')
   }
 
   redirect('/dashboard')

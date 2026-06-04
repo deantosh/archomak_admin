@@ -182,7 +182,7 @@ export function ResetPasswordForm() {
       form.reset()
 
       window.setTimeout(() => {
-        router.replace('/admin/login?message=password-updated')
+        router.replace('/login?message=password-updated')
       }, 1200)
     } catch {
       setErrorMessage('We could not update your password. Please request a new reset link.')
