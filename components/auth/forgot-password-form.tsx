@@ -31,6 +31,8 @@ const SUCCESS_MESSAGE =
   'If an account exists for this email, a password reset link has been sent.'
 const RESET_PASSWORD_REDIRECT_URL =
   'https://admin.archomak.com/reset-password'
+const FRIENDLY_RATE_LIMIT_MESSAGE =
+  'Too many reset requests were made recently. Please wait a few minutes and try again.'
 
 export function ForgotPasswordForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -61,7 +63,12 @@ export function ForgotPasswordForm() {
       )
 
       if (error) {
-        setErrorMessage(message)
+        const normalizedMessage = message?.toLowerCase() ?? ''
+        setErrorMessage(
+          normalizedMessage.includes('rate limit')
+            ? FRIENDLY_RATE_LIMIT_MESSAGE
+            : message,
+        )
         return
       }
 
