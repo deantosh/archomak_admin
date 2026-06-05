@@ -55,13 +55,13 @@ export function ForgotPasswordForm() {
     }
 
     try {
-      const { error } = await resetPasswordForEmail(
+      const { error, message } = await resetPasswordForEmail(
         values.email,
         RESET_PASSWORD_REDIRECT_URL,
       )
 
       if (error) {
-        setErrorMessage('We could not send the reset link right now. Please try again.')
+        setErrorMessage(message)
         return
       }
 

@@ -84,7 +84,24 @@ export async function resetPasswordForEmail(email: string, redirectTo: string) {
     body: JSON.stringify({ email, redirect_to: redirectTo }),
   })
 
-  return { error: !response.ok }
+  if (response.ok) {
+    return { error: false as const, message: null }
+  }
+
+  let message = 'We could not send the reset link right now. Please try again.'
+
+  try {
+    const data = (await response.json()) as { msg?: string; message?: string; error_description?: string }
+    message =
+      data.error_description ??
+      data.message ??
+      data.msg ??
+      message
+  } catch {
+    // Keep the fallback message when the response body is not JSON.
+  }
+
+  return { error: true as const, message }
 }
 
 export async function updatePassword(accessToken: string, password: string) {
