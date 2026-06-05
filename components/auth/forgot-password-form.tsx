@@ -29,6 +29,8 @@ type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>
 
 const SUCCESS_MESSAGE =
   'If an account exists for this email, a password reset link has been sent.'
+const RESET_PASSWORD_REDIRECT_URL =
+  'https://admin.archomak.com/reset-password'
 
 export function ForgotPasswordForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -53,8 +55,10 @@ export function ForgotPasswordForm() {
     }
 
     try {
-      const redirectTo = `${window.location.origin}/reset-password`
-      const { error } = await resetPasswordForEmail(values.email, redirectTo)
+      const { error } = await resetPasswordForEmail(
+        values.email,
+        RESET_PASSWORD_REDIRECT_URL,
+      )
 
       if (error) {
         setErrorMessage('We could not send the reset link right now. Please try again.')
