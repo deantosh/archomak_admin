@@ -45,7 +45,6 @@ export function LoginForm() {
   const searchParams = useSearchParams()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
-  const [redirectMessage, setRedirectMessage] = useState<string | null>(null)
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -59,28 +58,6 @@ export function LoginForm() {
   useEffect(() => {
     if (!hasSupabaseEnv()) {
       setConfigError(CONFIG_ERROR)
-      return
-    }
-
-    const queryParams = new URLSearchParams(window.location.search)
-    const tokenHash = queryParams.get('token_hash')
-    const queryType = queryParams.get('type')
-    const code = queryParams.get('code')
-    const hashParams = new URLSearchParams(
-      window.location.hash.startsWith('#')
-        ? window.location.hash.slice(1)
-        : window.location.hash,
-    )
-    const hashType = hashParams.get('type')
-
-    if (
-      (tokenHash && queryType === 'recovery') ||
-      (code && queryType === 'recovery') ||
-      hashType === 'recovery'
-    ) {
-      setRedirectMessage('Redirecting to reset password…')
-      const destination = `/reset-password${window.location.search}${window.location.hash}`
-      router.replace(destination)
       return
     }
 
@@ -175,12 +152,6 @@ export function LoginForm() {
         </div>
       </CardHeader>
       <CardContent>
-        {redirectMessage ? (
-          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-200">
-            <LoaderCircle className="size-4 animate-spin text-emerald-300" />
-            <p>{redirectMessage}</p>
-          </div>
-        ) : (
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-5">
             {(errorMessage || configError) && (
@@ -273,7 +244,6 @@ export function LoginForm() {
             </Button>
           </form>
         </Form>
-        )}
 
         <p className="mt-6 text-center text-xs leading-5 text-slate-400">
           Authorized personnel only. Access is restricted to approved Archomak staff.
