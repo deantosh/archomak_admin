@@ -61,6 +61,22 @@ export function LoginForm() {
       return
     }
 
+    const queryParams = new URLSearchParams(window.location.search)
+    const tokenHash = queryParams.get('token_hash')
+    const queryType = queryParams.get('type')
+    const hashParams = new URLSearchParams(
+      window.location.hash.startsWith('#')
+        ? window.location.hash.slice(1)
+        : window.location.hash,
+    )
+    const hashType = hashParams.get('type')
+
+    if ((tokenHash && queryType === 'recovery') || hashType === 'recovery') {
+      const destination = `/reset-password${window.location.search}${window.location.hash}`
+      router.replace(destination)
+      return
+    }
+
     const rememberedEmail = window.localStorage.getItem('archomak-remembered-email')
     const error = searchParams.get('error')
 
