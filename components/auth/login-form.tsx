@@ -64,6 +64,7 @@ export function LoginForm() {
     const queryParams = new URLSearchParams(window.location.search)
     const tokenHash = queryParams.get('token_hash')
     const queryType = queryParams.get('type')
+    const code = queryParams.get('code')
     const hashParams = new URLSearchParams(
       window.location.hash.startsWith('#')
         ? window.location.hash.slice(1)
@@ -71,7 +72,11 @@ export function LoginForm() {
     )
     const hashType = hashParams.get('type')
 
-    if ((tokenHash && queryType === 'recovery') || hashType === 'recovery') {
+    if (
+      (tokenHash && queryType === 'recovery') ||
+      (code && queryType === 'recovery') ||
+      hashType === 'recovery'
+    ) {
       const destination = `/reset-password${window.location.search}${window.location.hash}`
       router.replace(destination)
       return
