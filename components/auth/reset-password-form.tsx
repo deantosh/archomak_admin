@@ -58,6 +58,13 @@ function parseHashParams(hash: string) {
   }
 }
 
+function clearRecoveryUrlState() {
+  const nextUrl = new URL(window.location.href)
+  nextUrl.search = ''
+  nextUrl.hash = ''
+  window.history.replaceState({}, '', nextUrl.toString())
+}
+
 export function ResetPasswordForm() {
   const router = useRouter()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -89,6 +96,13 @@ export function ResetPasswordForm() {
         const queryParams = new URLSearchParams(window.location.search)
         const tokenHash = queryParams.get('token_hash')
         const queryType = queryParams.get('type')
+        const queryError = queryParams.get('error')
+        const queryErrorCode = queryParams.get('error_code')
+
+        if (queryError || queryErrorCode) {
+          clearRecoveryUrlState()
+          throw new Error('Invalid recovery session')
+        }
 
         if (tokenHash && queryType) {
           const session = await verifyRecoveryToken(tokenHash, queryType)
@@ -101,10 +115,22 @@ export function ResetPasswordForm() {
             setRecoveryReady(true)
             setReady(true)
           }
+
+          clearRecoveryUrlState()
           return
         }
 
-        const { accessToken, refreshToken, type } = parseHashParams(window.location.hash)
+        const hashParams = parseHashParams(window.location.hash)
+        const accessToken = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
+        const type = hashParams.get('type')
+        const hashError = hashParams.get('error')
+        const hashErrorCode = hashParams.get('error_code')
+
+        if (hashError || hashErrorCode) {
+          clearRecoveryUrlState()
+          throw new Error('Invalid recovery session')
+        }
 
         if (type === 'recovery' && accessToken && refreshToken) {
           const user = await fetchUser(accessToken)
@@ -124,6 +150,8 @@ export function ResetPasswordForm() {
             setRecoveryReady(true)
             setReady(true)
           }
+
+          clearRecoveryUrlState()
           return
         }
 

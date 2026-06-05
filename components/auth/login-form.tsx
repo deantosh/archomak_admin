@@ -39,6 +39,10 @@ const ACCESS_DENIED =
   'Access denied. Your account is not authorized to access this dashboard.'
 const CONFIG_ERROR =
   'Supabase environment variables are missing. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable sign-in.'
+function parseHashParams(hash: string) {
+  const cleanHash = hash.startsWith('#') ? hash.slice(1) : hash
+  return new URLSearchParams(cleanHash)
+}
 
 export function LoginForm() {
   const router = useRouter()
@@ -58,6 +62,23 @@ export function LoginForm() {
   useEffect(() => {
     if (!hasSupabaseEnv()) {
       setConfigError(CONFIG_ERROR)
+      return
+    }
+
+    const recoveryHashParams = parseHashParams(window.location.hash)
+    const recoveryType = recoveryHashParams.get('type')
+    const accessToken = recoveryHashParams.get('access_token')
+    const refreshToken = recoveryHashParams.get('refresh_token')
+    const hashError = recoveryHashParams.get('error')
+    const hashErrorCode = recoveryHashParams.get('error_code')
+
+    if (
+      recoveryType === 'recovery' ||
+      (accessToken && refreshToken) ||
+      hashError ||
+      hashErrorCode
+    ) {
+      router.replace(`/reset-password${window.location.search}${window.location.hash}`)
       return
     }
 
