@@ -107,11 +107,7 @@ function isAllowedByMetadata(user: AuthenticatedUser) {
 }
 
 async function isAllowedByConfiguredTable(user: AuthenticatedUser) {
-  const table = process.env.SUPABASE_ACCESS_TABLE
-
-  if (!table) {
-    return { allowed: false as const }
-  }
+  const table = process.env.SUPABASE_ACCESS_TABLE ?? 'organization_members'
 
   const session = await getAuthenticatedUser()
 
@@ -120,11 +116,13 @@ async function isAllowedByConfiguredTable(user: AuthenticatedUser) {
   }
 
   const userIdColumn = process.env.SUPABASE_ACCESS_USER_ID_COLUMN ?? 'user_id'
-  const emailColumn = process.env.SUPABASE_ACCESS_EMAIL_COLUMN ?? 'email'
-  const activeColumn = process.env.SUPABASE_ACCESS_ACTIVE_COLUMN
-  const roleColumn = process.env.SUPABASE_ACCESS_ROLE_COLUMN
-  const allowedRoles = (process.env.SUPABASE_ALLOWED_ADMIN_ROLES ?? '')
-    .split(',')
+  const emailColumn = process.env.SUPABASE_ACCESS_EMAIL_COLUMN
+  const activeColumn = process.env.SUPABASE_ACCESS_ACTIVE_COLUMN ?? 'status'
+  const activeValue = process.env.SUPABASE_ACCESS_ACTIVE_VALUE ?? 'active'
+  const roleColumn = process.env.SUPABASE_ACCESS_ROLE_COLUMN ?? 'role'
+  const allowedRoles = (
+    process.env.SUPABASE_ALLOWED_ADMIN_ROLES?.split(',') ?? DEFAULT_ALLOWED_ROLES
+  )
     .map((role) => role.trim())
     .filter(Boolean)
   const selectColumns = Array.from(
@@ -139,7 +137,7 @@ async function isAllowedByConfiguredTable(user: AuthenticatedUser) {
 
   attempts.push({ column: userIdColumn, value: user.id })
 
-  if (user.email) {
+  if (emailColumn && user.email) {
     attempts.push({ column: emailColumn, value: user.email })
   }
 
@@ -151,7 +149,7 @@ async function isAllowedByConfiguredTable(user: AuthenticatedUser) {
     })
 
     if (activeColumn) {
-      filters.set(activeColumn, 'eq.true')
+      filters.set(activeColumn, `eq.${activeValue}`)
     }
 
     if (roleColumn && allowedRoles.length > 0) {
