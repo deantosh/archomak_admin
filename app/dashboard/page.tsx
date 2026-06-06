@@ -6,11 +6,7 @@ import { Activity, FileText, Server, TrendingUp, Users } from 'lucide-react'
 import { ActivityFeed } from '@/components/dashboard/activity-feed'
 import { EmptyState } from '@/components/dashboard/empty-state'
 import { StatCard } from '@/components/dashboard/stat-card'
-import {
-  KunanyeshaAdminActivityResponse,
-  KunanyeshaAdminHealthResponse,
-  KunanyeshaAdminSummaryResponse,
-} from '@/lib/kunanyesha-admin-types'
+import { PortfolioOverviewResponse } from '@/lib/admin-portfolio-types'
 
 function formatCurrency(amount: number) {
   return `$${amount.toLocaleString()}`
@@ -23,9 +19,7 @@ function mapSeverity(severity: string) {
 }
 
 export default function DashboardPage() {
-  const [summary, setSummary] = useState<KunanyeshaAdminSummaryResponse | null>(null)
-  const [activity, setActivity] = useState<KunanyeshaAdminActivityResponse['items']>([])
-  const [health, setHealth] = useState<KunanyeshaAdminHealthResponse | null>(null)
+  const [overview, setOverview] = useState<PortfolioOverviewResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -35,26 +29,16 @@ export default function DashboardPage() {
     async function load() {
       try {
         setLoading(true)
-        const [summaryRes, activityRes, healthRes] = await Promise.all([
-          fetch('/api/kunanyesha-admin/summary', { cache: 'no-store' }),
-          fetch('/api/kunanyesha-admin/activity', { cache: 'no-store' }),
-          fetch('/api/kunanyesha-admin/health', { cache: 'no-store' }),
-        ])
+        const response = await fetch('/api/admin-overview', { cache: 'no-store' })
 
-        if (!summaryRes.ok || !activityRes.ok || !healthRes.ok) {
+        if (!response.ok) {
           throw new Error('We could not load live dashboard data right now.')
         }
 
-        const [summaryData, activityData, healthData] = await Promise.all([
-          summaryRes.json() as Promise<KunanyeshaAdminSummaryResponse>,
-          activityRes.json() as Promise<KunanyeshaAdminActivityResponse>,
-          healthRes.json() as Promise<KunanyeshaAdminHealthResponse>,
-        ])
+        const data = (await response.json()) as PortfolioOverviewResponse
 
         if (!active) return
-        setSummary(summaryData)
-        setActivity(activityData.items)
-        setHealth(healthData)
+        setOverview(data)
         setError(null)
       } catch (err) {
         if (!active) return
@@ -73,17 +57,17 @@ export default function DashboardPage() {
   }, [])
 
   const needsAttention =
-    summary &&
-    (summary.pending_reports > 0 ||
-      summary.failed_payments_count > 0 ||
-      health?.status === 'degraded')
+    overview &&
+    (overview.pending_reports > 0 ||
+      overview.failed_payments_count > 0 ||
+      overview.degraded_apps_count > 0)
 
   return (
     <div className="space-y-6 p-4 lg:p-8">
       <div className="mb-8">
         <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-2">Dashboard</h1>
         <p className="text-muted-foreground">
-          Live centralized view of Kunanyesha operational data.
+          Live centralized view of operational data across all connected applications.
         </p>
       </div>
 
@@ -96,25 +80,25 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Active Applications"
-          value={summary ? 1 : loading ? '—' : 0}
+          value={overview ? overview.applications_count : loading ? '—' : 0}
           icon={<Server size={20} />}
           trend="up"
         />
         <StatCard
           title="Total Users"
-          value={summary ? summary.users_total.toLocaleString() : '—'}
+          value={overview ? overview.total_users.toLocaleString() : '—'}
           icon={<Users size={20} />}
           trend="up"
         />
         <StatCard
           title="Total Revenue"
-          value={summary ? formatCurrency(summary.completed_payments_total) : '—'}
+          value={overview ? formatCurrency(overview.total_revenue) : '—'}
           icon={<TrendingUp size={20} />}
           trend="up"
         />
         <StatCard
           title="Reports Generated"
-          value={summary ? summary.reports_total.toLocaleString() : '—'}
+          value={overview ? overview.total_reports.toLocaleString() : '—'}
           icon={<FileText size={20} />}
           trend="up"
         />
@@ -124,56 +108,68 @@ export default function DashboardPage() {
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
           <p className="text-sm font-semibold text-amber-400 mb-2">Attention needed</p>
           <p className="text-xs text-muted-foreground">
-            {summary?.pending_reports ? `${summary.pending_reports} pending report(s). ` : ''}
-            {summary?.failed_payments_count
-              ? `${summary.failed_payments_count} failed payment(s). `
+            {overview?.pending_reports ? `${overview.pending_reports} pending report(s). ` : ''}
+            {overview?.failed_payments_count
+              ? `${overview.failed_payments_count} failed payment(s). `
               : ''}
-            {health?.status === 'degraded' ? 'System health is degraded.' : ''}
+            {overview?.degraded_apps_count
+              ? `${overview.degraded_apps_count} application(s) need review.`
+              : ''}
           </p>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6">
-          <h2 className="text-lg font-semibold text-foreground mb-2">Application Snapshot</h2>
-          {summary ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="rounded-xl border border-border p-4">
-                <p className="text-muted-foreground mb-1">Application</p>
-                <p className="font-semibold text-foreground">{summary.app.name}</p>
+          <h2 className="text-lg font-semibold text-foreground mb-2">Portfolio Snapshot</h2>
+          {overview ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="rounded-xl border border-border p-4">
+                  <p className="text-muted-foreground mb-1">Connected Applications</p>
+                  <p className="font-semibold text-foreground">{overview.applications_count}</p>
+                </div>
+                <div className="rounded-xl border border-border p-4">
+                  <p className="text-muted-foreground mb-1">Daily Requests</p>
+                  <p className="font-semibold text-foreground">
+                    {overview.total_requests_per_day.toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border p-4">
+                  <p className="text-muted-foreground mb-1">Uploads</p>
+                  <p className="font-semibold text-foreground">{overview.total_uploads.toLocaleString()}</p>
+                </div>
               </div>
-              <div className="rounded-xl border border-border p-4">
-                <p className="text-muted-foreground mb-1">Status</p>
-                <p className="font-semibold text-foreground capitalize">{summary.app.status}</p>
-              </div>
-              <div className="rounded-xl border border-border p-4">
-                <p className="text-muted-foreground mb-1">API Health</p>
-                <p className="font-semibold text-foreground">{summary.app.api_health}%</p>
-              </div>
-              <div className="rounded-xl border border-border p-4">
-                <p className="text-muted-foreground mb-1">Daily Requests</p>
-                <p className="font-semibold text-foreground">
-                  {summary.app.requests_per_day.toLocaleString()}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border p-4">
-                <p className="text-muted-foreground mb-1">Uploads</p>
-                <p className="font-semibold text-foreground">
-                  {summary.uploads_total.toLocaleString()}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border p-4">
-                <p className="text-muted-foreground mb-1">Environment</p>
-                <p className="font-semibold text-foreground capitalize">
-                  {summary.app.environment}
-                </p>
+
+              <div className="space-y-3">
+                {overview.apps.map((app) => (
+                  <div
+                    key={app.source_key}
+                    className="rounded-xl border border-border p-4 flex items-center justify-between gap-4"
+                  >
+                    <div>
+                      <p className="font-semibold text-foreground">
+                        {app.source_icon || '📦'} {app.app.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {app.app.environment} · {app.app.status} · {app.users_total.toLocaleString()} users
+                      </p>
+                    </div>
+                    <div className="text-right text-sm">
+                      <p className="font-semibold text-foreground">{app.app.api_health}% API health</p>
+                      <p className="text-xs text-muted-foreground">
+                        {app.app.requests_per_day.toLocaleString()} requests/day
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ) : (
             <EmptyState
               icon="📡"
               title={loading ? 'Loading live data…' : 'No live snapshot'}
-              description="This panel will show the current Kunanyesha application summary."
+              description="This panel will show the current application portfolio summary."
             />
           )}
         </div>
@@ -183,12 +179,12 @@ export default function DashboardPage() {
             <Activity size={18} className="text-primary" />
             <h2 className="text-lg font-semibold text-foreground">Recent Activity</h2>
           </div>
-          {activity.length > 0 ? (
+          {overview?.activity.length ? (
             <ActivityFeed
-              items={activity.map((item) => ({
+              items={overview.activity.map((item) => ({
                 id: item.id,
                 icon: item.severity === 'critical' ? '⚠️' : item.severity === 'warning' ? '⏳' : '✅',
-                title: item.type.replace('.', ' '),
+                title: `${item.source_label}: ${item.type.replace('.', ' ')}`,
                 description: item.message,
                 timestamp: item.timestamp,
                 status: mapSeverity(item.severity),
@@ -198,7 +194,7 @@ export default function DashboardPage() {
             <EmptyState
               icon="🧾"
               title={loading ? 'Loading activity…' : 'No recent activity'}
-              description="Latest operational events from Kunanyesha will appear here."
+              description="Latest operational events from connected applications will appear here."
             />
           )}
         </div>

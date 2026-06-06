@@ -4,45 +4,43 @@ import { useEffect, useState } from 'react';
 import { Search, Grid2X2, List, Plus } from 'lucide-react';
 import { AppCard } from '@/components/dashboard/app-card';
 import { Button } from '@/components/ui/button';
-import { KunanyeshaAdminSummaryResponse } from '@/lib/kunanyesha-admin-types';
+import { PortfolioOverviewResponse } from '@/lib/admin-portfolio-types';
 
 type ViewType = 'grid' | 'list';
 
 export default function AppsPage() {
   const [viewType, setViewType] = useState<ViewType>('grid');
   const [searchQuery, setSearchQuery] = useState('');
-  const [summary, setSummary] = useState<KunanyeshaAdminSummaryResponse | null>(null)
+  const [overview, setOverview] = useState<PortfolioOverviewResponse | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    void fetch('/api/kunanyesha-admin/summary', { cache: 'no-store' })
+    void fetch('/api/admin-overview', { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setSummary(data))
+      .then((data) => setOverview(data))
       .finally(() => setLoading(false))
   }, [])
 
-  const apps = summary
-    ? [
-        {
-          id: summary.app.key,
-          name: summary.app.name,
-          icon: '🌧️',
-          status:
-            summary.app.status === 'operational'
-              ? 'operational'
-              : summary.app.status === 'warning'
-                ? 'warning'
-                : 'critical',
-          environment:
-            summary.app.environment === 'staging' ? 'staging' : 'production',
-          users: summary.app.users,
-          apiHealth: summary.app.api_health,
-          requestsPerDay: summary.app.requests_per_day,
-          revenue: summary.app.revenue,
-          lastDeployment: summary.app.last_deployment || new Date().toISOString(),
-          activeUsers: summary.app.active_users,
-        },
-      ]
+  const apps = overview
+    ? overview.apps.map((app) => ({
+        id: app.source_key,
+        name: app.app.name,
+        icon: app.source_icon || '📦',
+        status:
+          app.app.status === 'operational'
+            ? 'operational'
+            : app.app.status === 'warning'
+              ? 'warning'
+              : 'critical',
+        environment:
+          app.app.environment === 'staging' ? 'staging' : 'production',
+        users: app.users_total,
+        apiHealth: app.app.api_health,
+        requestsPerDay: app.app.requests_per_day,
+        revenue: app.completed_payments_total,
+        lastDeployment: app.app.last_deployment || new Date().toISOString(),
+        activeUsers: app.app.active_users,
+      }))
     : [];
 
   const filteredApps = apps.filter(app =>
