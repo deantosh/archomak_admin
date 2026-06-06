@@ -20,11 +20,9 @@ import {
 } from '@/components/ui/form'
 import {
   clearSessionCookies,
-  fetchUser,
-  persistSession,
-  updatePassword,
   verifyRecoveryToken,
 } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
 import { hasSupabaseEnv } from '@/lib/supabase/config'
 
 const passwordRequirements =
@@ -46,17 +44,6 @@ const resetPasswordSchema = z
   })
 
 type ResetPasswordValues = z.infer<typeof resetPasswordSchema>
-
-function parseHashParams(hash: string) {
-  const cleanHash = hash.startsWith('#') ? hash.slice(1) : hash
-  const params = new URLSearchParams(cleanHash)
-
-  return {
-    accessToken: params.get('access_token'),
-    refreshToken: params.get('refresh_token'),
-    type: params.get('type'),
-  }
-}
 
 function clearRecoveryUrlState() {
   const nextUrl = new URL(window.location.href)
@@ -82,6 +69,7 @@ export function ResetPasswordForm() {
 
   useEffect(() => {
     let cancelled = false
+    let unsubscribe: (() => void) | null = null
 
     async function initializeRecovery() {
       if (!hasSupabaseEnv()) {
@@ -93,6 +81,25 @@ export function ResetPasswordForm() {
       }
 
       try {
+        const supabase = getSupabaseBrowserClient()
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((event, session) => {
+          if (cancelled) {
+            return
+          }
+
+          if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+            setRecoveryReady(Boolean(session))
+            setErrorMessage(session ? null : 'This password reset link is invalid or has expired.')
+            setReady(true)
+
+            if (session) {
+              clearRecoveryUrlState()
+            }
+          }
+        })
+        unsubscribe = () => subscription.unsubscribe()
         const queryParams = new URLSearchParams(window.location.search)
         const tokenHash = queryParams.get('token_hash')
         const queryType = queryParams.get('type')
@@ -120,10 +127,11 @@ export function ResetPasswordForm() {
           return
         }
 
-        const hashParams = parseHashParams(window.location.hash)
-        const accessToken = hashParams.get('access_token')
-        const refreshToken = hashParams.get('refresh_token')
-        const type = hashParams.get('type')
+        const hashParams = new URLSearchParams(
+          window.location.hash.startsWith('#')
+            ? window.location.hash.slice(1)
+            : window.location.hash,
+        )
         const hashError = hashParams.get('error')
         const hashErrorCode = hashParams.get('error_code')
 
@@ -132,42 +140,17 @@ export function ResetPasswordForm() {
           throw new Error('Invalid recovery session')
         }
 
-        if (type === 'recovery' && accessToken && refreshToken) {
-          const user = await fetchUser(accessToken)
-
-          if (!user) {
-            throw new Error('Invalid recovery session')
-          }
-
-          persistSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-            expires_in: 3600,
-            user,
-          })
-
-          if (!cancelled) {
-            setRecoveryReady(true)
-            setReady(true)
-          }
-
-          clearRecoveryUrlState()
-          return
-        }
-
-        const cookieAccessToken = document.cookie
-          .split('; ')
-          .find((cookie) => cookie.startsWith('archomak_access_token='))
-          ?.split('=')[1]
-
-        const user = cookieAccessToken
-          ? await fetchUser(decodeURIComponent(cookieAccessToken))
-          : null
+        const { data } = await supabase.auth.getSession()
+        const user = data.session?.user ?? null
 
         if (!cancelled) {
           setRecoveryReady(Boolean(user))
           setErrorMessage(user ? null : 'This password reset link is invalid or has expired.')
           setReady(true)
+        }
+
+        if (user) {
+          clearRecoveryUrlState()
         }
       } catch {
         if (!cancelled) {
@@ -181,6 +164,7 @@ export function ResetPasswordForm() {
 
     return () => {
       cancelled = true
+      unsubscribe?.()
     }
   }, [])
 
@@ -188,23 +172,24 @@ export function ResetPasswordForm() {
     setErrorMessage(null)
 
     try {
-      const accessToken = document.cookie
-        .split('; ')
-        .find((cookie) => cookie.startsWith('archomak_access_token='))
-        ?.split('=')[1]
+      const supabase = getSupabaseBrowserClient()
+      const { data: sessionData } = await supabase.auth.getSession()
 
-      if (!accessToken) {
+      if (!sessionData.session) {
         setErrorMessage('This password reset link is invalid or has expired.')
         return
       }
 
-      const { error } = await updatePassword(decodeURIComponent(accessToken), values.password)
+      const { error } = await supabase.auth.updateUser({
+        password: values.password,
+      })
 
       if (error) {
         setErrorMessage('We could not update your password. Please request a new reset link.')
         return
       }
 
+      await supabase.auth.signOut()
       clearSessionCookies()
       setSuccessMessage('Password updated successfully. You can now sign in.')
       form.reset()

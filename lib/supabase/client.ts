@@ -1,5 +1,6 @@
 'use client'
 
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
 import { getSupabaseEnv } from '@/lib/supabase/config'
 
 type SupabaseUser = {
@@ -78,36 +79,15 @@ export async function signInWithPassword(email: string, password: string) {
 }
 
 export async function resetPasswordForEmail(email: string, redirectTo: string) {
-  const recoverUrl = new URL(getAuthUrl('/recover'))
-  recoverUrl.searchParams.set('redirect_to', redirectTo)
-
-  const response = await fetch(recoverUrl.toString(), {
-    method: 'POST',
-    headers: getBaseHeaders(),
-    body: JSON.stringify({
-      email,
-      redirect_to: redirectTo,
-    }),
+  const supabase = getSupabaseBrowserClient()
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
   })
 
-  if (response.ok) {
-    return { error: false as const, message: null }
+  return {
+    error: Boolean(error) as true | false,
+    message: error?.message ?? null,
   }
-
-  let message = 'We could not send the reset link right now. Please try again.'
-
-  try {
-    const data = (await response.json()) as { msg?: string; message?: string; error_description?: string }
-    message =
-      data.error_description ??
-      data.message ??
-      data.msg ??
-      message
-  } catch {
-    // Keep the fallback message when the response body is not JSON.
-  }
-
-  return { error: true as const, message }
 }
 
 export async function updatePassword(accessToken: string, password: string) {
@@ -139,20 +119,17 @@ export async function fetchUser(accessToken: string) {
 }
 
 export async function verifyRecoveryToken(tokenHash: string, type: string) {
-  const response = await fetch(getAuthUrl('/verify'), {
-    method: 'POST',
-    headers: getBaseHeaders(),
-    body: JSON.stringify({
-      token_hash: tokenHash,
-      type,
-    }),
+  const supabase = getSupabaseBrowserClient()
+  const { data, error } = await supabase.auth.verifyOtp({
+    token_hash: tokenHash,
+    type: type as 'recovery',
   })
 
-  if (!response.ok) {
+  if (error || !data.session) {
     return null
   }
 
-  const session = (await response.json()) as SupabaseSession
+  const session = data.session as SupabaseSession
   persistSession(session)
   return session
 }
