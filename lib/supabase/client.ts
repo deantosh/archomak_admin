@@ -78,10 +78,16 @@ export async function signInWithPassword(email: string, password: string) {
 }
 
 export async function resetPasswordForEmail(email: string, redirectTo: string) {
-  const response = await fetch(getAuthUrl('/recover'), {
+  const recoverUrl = new URL(getAuthUrl('/recover'))
+  recoverUrl.searchParams.set('redirect_to', redirectTo)
+
+  const response = await fetch(recoverUrl.toString(), {
     method: 'POST',
     headers: getBaseHeaders(),
-    body: JSON.stringify({ email, redirect_to: redirectTo }),
+    body: JSON.stringify({
+      email,
+      redirect_to: redirectTo,
+    }),
   })
 
   if (response.ok) {
