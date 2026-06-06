@@ -1,10 +1,21 @@
 'use client';
 
-import { Bell, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { mockNotifications } from '@/lib/mock-data';
+import { KunanyeshaAdminNotificationItem, KunanyeshaAdminNotificationsResponse } from '@/lib/kunanyesha-admin-types';
 
 export default function NotificationsPage() {
+  const [notifications, setNotifications] = useState<KunanyeshaAdminNotificationItem[]>([])
+
+  useEffect(() => {
+    void fetch('/api/kunanyesha-admin/notifications', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: KunanyeshaAdminNotificationsResponse | null) => {
+        setNotifications(data?.items || [])
+      })
+  }, [])
+
   return (
     <div className="space-y-6 p-4 lg:p-8">
       <div className="flex items-center justify-between">
@@ -16,13 +27,15 @@ export default function NotificationsPage() {
       </div>
 
       <div className="space-y-3">
-        {mockNotifications.map((notif) => (
+        {notifications.map((notif) => (
           <div
             key={notif.id}
-            className={`bg-card border ${notif.read ? 'border-border' : 'border-primary/50 bg-primary/5'} rounded-2xl p-4 flex items-start justify-between hover:border-primary/30 transition-colors`}
+            className={`bg-card border ${notif.severity === 'info' ? 'border-border' : 'border-primary/50 bg-primary/5'} rounded-2xl p-4 flex items-start justify-between hover:border-primary/30 transition-colors`}
           >
             <div className="flex items-start gap-3 flex-1">
-              <div className="text-2xl mt-1">{notif.icon}</div>
+              <div className="text-2xl mt-1">
+                {notif.severity === 'critical' ? '⚠️' : notif.severity === 'warning' ? '⏳' : '✅'}
+              </div>
               <div className="flex-1">
                 <p className="font-semibold text-foreground">{notif.title}</p>
                 <p className="text-sm text-muted-foreground mt-1">{notif.message}</p>

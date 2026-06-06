@@ -1,18 +1,48 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import { Search, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { mockPayments } from '@/lib/mock-data';
+import {
+  KunanyeshaAdminPaymentItem,
+  KunanyeshaAdminPaymentsResponse,
+  KunanyeshaAdminPaymentsSummaryResponse,
+} from '@/lib/kunanyesha-admin-types';
 
 export default function PaymentsPage() {
-  const totalRevenue = mockPayments
-    .filter(p => p.status === 'completed')
-    .reduce((sum, p) => sum + p.amount, 0);
+  const [summary, setSummary] = useState<KunanyeshaAdminPaymentsSummaryResponse | null>(null)
+  const [payments, setPayments] = useState<KunanyeshaAdminPaymentItem[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
 
-  const pendingAmount = mockPayments
-    .filter(p => p.status === 'pending')
-    .reduce((sum, p) => sum + p.amount, 0);
+  useEffect(() => {
+    void Promise.all([
+      fetch('/api/kunanyesha-admin/payments/summary', { cache: 'no-store' }),
+      fetch('/api/kunanyesha-admin/payments', { cache: 'no-store' }),
+    ]).then(async ([summaryRes, paymentsRes]) => {
+      if (summaryRes.ok) {
+        setSummary((await summaryRes.json()) as KunanyeshaAdminPaymentsSummaryResponse)
+      }
+      if (paymentsRes.ok) {
+        const data = (await paymentsRes.json()) as KunanyeshaAdminPaymentsResponse
+        setPayments(data.items)
+      }
+    })
+  }, [])
+
+  const filteredPayments = useMemo(
+    () =>
+      payments.filter((payment) => {
+        const needle = searchQuery.toLowerCase()
+        return (
+          payment.reference?.toLowerCase().includes(needle) ||
+          payment.user_id?.toLowerCase().includes(needle) ||
+          payment.status.toLowerCase().includes(needle) ||
+          !needle
+        )
+      }),
+    [payments, searchQuery],
+  )
 
   return (
     <div className="space-y-6 p-4 lg:p-8">
@@ -32,18 +62,18 @@ export default function PaymentsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-2xl p-6">
           <p className="text-sm font-medium text-muted-foreground mb-2">Completed Payments</p>
-          <p className="text-3xl font-bold text-foreground">${(totalRevenue / 1000).toFixed(1)}K</p>
-          <p className="text-xs text-emerald-500 mt-2">✓ {mockPayments.filter(p => p.status === 'completed').length} transactions</p>
+          <p className="text-3xl font-bold text-foreground">${((summary?.completed_total || 0) / 1000).toFixed(1)}K</p>
+          <p className="text-xs text-emerald-500 mt-2">✓ {summary?.completed_count || 0} transactions</p>
         </div>
         <div className="bg-card border border-border rounded-2xl p-6">
           <p className="text-sm font-medium text-muted-foreground mb-2">Pending</p>
-          <p className="text-3xl font-bold text-amber-500">${(pendingAmount / 1000).toFixed(1)}K</p>
-          <p className="text-xs text-amber-500 mt-2">⏱ {mockPayments.filter(p => p.status === 'pending').length} transactions</p>
+          <p className="text-3xl font-bold text-amber-500">${((summary?.pending_total || 0) / 1000).toFixed(1)}K</p>
+          <p className="text-xs text-amber-500 mt-2">⏱ {summary?.pending_count || 0} transactions</p>
         </div>
         <div className="bg-card border border-border rounded-2xl p-6">
           <p className="text-sm font-medium text-muted-foreground mb-2">Failed</p>
-          <p className="text-3xl font-bold text-red-500">$2.1K</p>
-          <p className="text-xs text-red-500 mt-2">✗ {mockPayments.filter(p => p.status === 'failed').length} transactions</p>
+          <p className="text-3xl font-bold text-red-500">${((summary?.failed_total || 0) / 1000).toFixed(1)}K</p>
+          <p className="text-xs text-red-500 mt-2">✗ {summary?.failed_count || 0} transactions</p>
         </div>
       </div>
 
@@ -53,6 +83,8 @@ export default function PaymentsPage() {
         <input
           type="text"
           placeholder="Search transactions..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           className="bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground flex-1"
         />
       </div>
@@ -73,15 +105,17 @@ export default function PaymentsPage() {
               </tr>
             </thead>
             <tbody>
-              {mockPayments.map((payment) => (
+              {filteredPayments.map((payment) => (
                 <tr key={payment.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                  <td className="px-6 py-4 text-sm text-foreground">{payment.date}</td>
-                  <td className="px-6 py-4 text-sm font-medium text-foreground">{payment.customer}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{payment.app}</td>
-                  <td className="px-6 py-4 text-sm font-semibold text-primary">${payment.amount.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">
-                    {payment.method === 'card' ? '💳 Card' : '🏦 Bank Transfer'}
+                  <td className="px-6 py-4 text-sm text-foreground">
+                    {payment.created_at ? new Date(payment.created_at).toLocaleDateString() : '—'}
                   </td>
+                  <td className="px-6 py-4 text-sm font-medium text-foreground">
+                    {payment.user_id || 'Unknown user'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">Kunanyesha</td>
+                  <td className="px-6 py-4 text-sm font-semibold text-primary">${payment.amount.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{payment.provider || '—'}</td>
                   <td className="px-6 py-4">
                     <Badge
                       variant={
@@ -103,7 +137,9 @@ export default function PaymentsPage() {
                     </Badge>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-sm font-medium text-muted-foreground hover:text-foreground">View</button>
+                    <button className="text-sm font-medium text-muted-foreground hover:text-foreground">
+                      {payment.reference || 'View'}
+                    </button>
                   </td>
                 </tr>
               ))}

@@ -1,9 +1,11 @@
 'use client';
 
-import { Activity, Server, Database, Zap, Clock, AlertCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Activity, Server, Zap, Clock, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ChartCard } from '@/components/dashboard/chart-card';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { KunanyeshaAdminSummaryResponse, KunanyeshaAdminSystemHealthResponse } from '@/lib/kunanyesha-admin-types';
 
 const systemData = [
   { time: '00:00', cpu: 45, memory: 62, requests: 1200 },
@@ -25,7 +27,20 @@ const services = [
 ];
 
 export default function SystemHealthPage() {
-  const avgUptime = (services.reduce((sum, s) => sum + s.uptime, 0) / services.length).toFixed(2);
+  const [health, setHealth] = useState<KunanyeshaAdminSystemHealthResponse | null>(null)
+  const [summary, setSummary] = useState<KunanyeshaAdminSummaryResponse | null>(null)
+
+  useEffect(() => {
+    void Promise.all([
+      fetch('/api/kunanyesha-admin/system-health', { cache: 'no-store' }),
+      fetch('/api/kunanyesha-admin/summary', { cache: 'no-store' }),
+    ]).then(async ([healthRes, summaryRes]) => {
+      if (healthRes.ok) setHealth((await healthRes.json()) as KunanyeshaAdminSystemHealthResponse)
+      if (summaryRes.ok) setSummary((await summaryRes.json()) as KunanyeshaAdminSummaryResponse)
+    })
+  }, [])
+
+  const liveServices = health?.services || services
 
   return (
     <div className="space-y-6 p-4 lg:p-8">
@@ -42,8 +57,8 @@ export default function SystemHealthPage() {
             <p className="text-sm font-medium text-muted-foreground">System Status</p>
             <Activity size={18} className="text-emerald-500" />
           </div>
-          <p className="text-3xl font-bold text-foreground">All Good</p>
-          <Badge className="mt-3 bg-emerald-500/10 text-emerald-500">Operational</Badge>
+          <p className="text-3xl font-bold text-foreground">{health?.status === 'degraded' ? 'Degraded' : 'All Good'}</p>
+          <Badge className="mt-3 bg-emerald-500/10 text-emerald-500 capitalize">{health?.status || 'operational'}</Badge>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6">
@@ -51,8 +66,8 @@ export default function SystemHealthPage() {
             <p className="text-sm font-medium text-muted-foreground">Average Uptime</p>
             <Zap size={18} className="text-primary" />
           </div>
-          <p className="text-3xl font-bold text-foreground">{avgUptime}%</p>
-          <p className="text-xs text-emerald-500 mt-2">↑ 0.02% vs last week</p>
+          <p className="text-3xl font-bold text-foreground">{summary?.app.api_health || 0}%</p>
+          <p className="text-xs text-emerald-500 mt-2">Live API health snapshot</p>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6">
@@ -60,8 +75,8 @@ export default function SystemHealthPage() {
             <p className="text-sm font-medium text-muted-foreground">Avg Response Time</p>
             <Clock size={18} className="text-blue-500" />
           </div>
-          <p className="text-3xl font-bold text-foreground">145ms</p>
-          <p className="text-xs text-emerald-500 mt-2">↓ 12ms vs last week</p>
+          <p className="text-3xl font-bold text-foreground">—</p>
+          <p className="text-xs text-muted-foreground mt-2">Latency not exposed yet</p>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6">
@@ -69,8 +84,10 @@ export default function SystemHealthPage() {
             <p className="text-sm font-medium text-muted-foreground">Incidents (30d)</p>
             <AlertCircle size={18} className="text-amber-500" />
           </div>
-          <p className="text-3xl font-bold text-foreground">2</p>
-          <p className="text-xs text-muted-foreground mt-2">Last: 3 days ago</p>
+          <p className="text-3xl font-bold text-foreground">
+            {health?.services.filter((service) => service.status !== 'operational').length || 0}
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">Current degraded services</p>
         </div>
       </div>
 
@@ -123,7 +140,7 @@ export default function SystemHealthPage() {
                 </tr>
               </thead>
               <tbody>
-                {services.map((service) => (
+                {liveServices.map((service) => (
                   <tr key={service.name} className="border-b border-border hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -142,8 +159,10 @@ export default function SystemHealthPage() {
                         {service.status.charAt(0).toUpperCase() + service.status.slice(1)}
                       </Badge>
                     </td>
-                    <td className="px-6 py-4 text-sm text-foreground font-semibold">{service.uptime}%</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{service.lastCheck}</td>
+                    <td className="px-6 py-4 text-sm text-foreground font-semibold">
+                      {service.status === 'operational' ? '—' : 'Check details'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{service.detail || 'Live probe'}</td>
                   </tr>
                 ))}
               </tbody>

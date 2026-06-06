@@ -1,18 +1,51 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, Grid2X2, List, Plus } from 'lucide-react';
 import { AppCard } from '@/components/dashboard/app-card';
 import { Button } from '@/components/ui/button';
-import { mockApps } from '@/lib/mock-data';
+import { KunanyeshaAdminSummaryResponse } from '@/lib/kunanyesha-admin-types';
 
 type ViewType = 'grid' | 'list';
 
 export default function AppsPage() {
   const [viewType, setViewType] = useState<ViewType>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+  const [summary, setSummary] = useState<KunanyeshaAdminSummaryResponse | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const filteredApps = mockApps.filter(app =>
+  useEffect(() => {
+    void fetch('/api/kunanyesha-admin/summary', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setSummary(data))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const apps = summary
+    ? [
+        {
+          id: summary.app.key,
+          name: summary.app.name,
+          icon: '🌧️',
+          status:
+            summary.app.status === 'operational'
+              ? 'operational'
+              : summary.app.status === 'warning'
+                ? 'warning'
+                : 'critical',
+          environment:
+            summary.app.environment === 'staging' ? 'staging' : 'production',
+          users: summary.app.users,
+          apiHealth: summary.app.api_health,
+          requestsPerDay: summary.app.requests_per_day,
+          revenue: summary.app.revenue,
+          lastDeployment: summary.app.last_deployment || new Date().toISOString(),
+          activeUsers: summary.app.active_users,
+        },
+      ]
+    : [];
+
+  const filteredApps = apps.filter(app =>
     app.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -158,6 +191,9 @@ export default function AppsPage() {
             </table>
           </div>
         </div>
+      )}
+      {!loading && filteredApps.length === 0 && (
+        <div className="text-sm text-muted-foreground">No applications available yet.</div>
       )}
     </div>
   );

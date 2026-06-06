@@ -1,35 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, Filter } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { mockLogs } from '@/lib/mock-data';
+import { KunanyeshaAdminLogItem, KunanyeshaAdminLogsResponse } from '@/lib/kunanyesha-admin-types';
 
-const statusColors: Record<number, string> = {
-  200: 'bg-emerald-500/10 text-emerald-500',
-  201: 'bg-emerald-500/10 text-emerald-500',
-  202: 'bg-emerald-500/10 text-emerald-500',
-  204: 'bg-emerald-500/10 text-emerald-500',
-  400: 'bg-amber-500/10 text-amber-500',
-  404: 'bg-amber-500/10 text-amber-500',
-  500: 'bg-red-500/10 text-red-500',
-};
-
-function getStatusColor(status: number) {
-  const group = Math.floor(status / 100) * 100;
-  if (status >= 200 && status < 300) return 'bg-emerald-500/10 text-emerald-500';
-  if (status >= 400 && status < 500) return 'bg-amber-500/10 text-amber-500';
-  if (status >= 500) return 'bg-red-500/10 text-red-500';
-  return 'bg-muted text-muted-foreground';
+function getStatusColor(status?: string | null) {
+  const value = String(status || '').toLowerCase()
+  if (['success', 'completed'].includes(value)) return 'bg-emerald-500/10 text-emerald-500'
+  if (['pending', 'processing', 'running'].includes(value)) return 'bg-amber-500/10 text-amber-500'
+  if (['failed', 'error'].includes(value)) return 'bg-red-500/10 text-red-500'
+  return 'bg-muted text-muted-foreground'
 }
 
 export default function LogsPage() {
-  const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
+  const [logs, setLogs] = useState<KunanyeshaAdminLogItem[]>([])
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('')
 
-  const filteredLogs = selectedStatus
-    ? mockLogs.filter(log => Math.floor(log.status / 100) * 100 === selectedStatus)
-    : mockLogs;
+  useEffect(() => {
+    void fetch('/api/kunanyesha-admin/logs', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: KunanyeshaAdminLogsResponse | null) => {
+        setLogs(data?.items || [])
+      })
+  }, [])
+
+  const filteredLogs = useMemo(
+    () =>
+      logs.filter((log) => {
+        const matchesStatus = !selectedStatus || log.status === selectedStatus
+        const needle = searchQuery.toLowerCase()
+        const matchesSearch =
+          !needle ||
+          (log.stage || '').toLowerCase().includes(needle) ||
+          (log.message || '').toLowerCase().includes(needle)
+        return matchesStatus && matchesSearch
+      }),
+    [logs, searchQuery, selectedStatus],
+  )
 
   function formatTime(timestamp: string) {
     return new Date(timestamp).toLocaleTimeString('en-US', {
@@ -57,6 +67,8 @@ export default function LogsPage() {
           <input
             type="text"
             placeholder="Search logs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground flex-1"
           />
         </div>
@@ -76,37 +88,37 @@ export default function LogsPage() {
               : 'bg-card border border-border hover:bg-muted'
           }`}
         >
-          All ({mockLogs.length})
+          All ({logs.length})
         </button>
         <button
-          onClick={() => setSelectedStatus(200)}
+          onClick={() => setSelectedStatus('success')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            selectedStatus === 200
+            selectedStatus === 'success'
               ? 'bg-emerald-500 text-white'
               : 'bg-card border border-border hover:bg-muted'
           }`}
         >
-          Success ({mockLogs.filter(l => l.status >= 200 && l.status < 300).length})
+          Success ({logs.filter(l => ['success', 'completed'].includes(String(l.status || '').toLowerCase())).length})
         </button>
         <button
-          onClick={() => setSelectedStatus(400)}
+          onClick={() => setSelectedStatus('pending')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            selectedStatus === 400
+            selectedStatus === 'pending'
               ? 'bg-amber-500 text-white'
               : 'bg-card border border-border hover:bg-muted'
           }`}
         >
-          Client Error ({mockLogs.filter(l => l.status >= 400 && l.status < 500).length})
+          Pending ({logs.filter(l => ['pending', 'processing', 'running'].includes(String(l.status || '').toLowerCase())).length})
         </button>
         <button
-          onClick={() => setSelectedStatus(500)}
+          onClick={() => setSelectedStatus('failed')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            selectedStatus === 500
+            selectedStatus === 'failed'
               ? 'bg-red-500 text-white'
               : 'bg-card border border-border hover:bg-muted'
           }`}
         >
-          Server Error ({mockLogs.filter(l => l.status >= 500).length})
+          Failed ({logs.filter(l => ['failed', 'error'].includes(String(l.status || '').toLowerCase())).length})
         </button>
       </div>
 
@@ -127,19 +139,21 @@ export default function LogsPage() {
             <tbody>
               {filteredLogs.map((log) => (
                 <tr key={log.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                  <td className="px-6 py-4 text-muted-foreground font-mono text-xs">{formatTime(log.timestamp)}</td>
-                  <td className="px-6 py-4 font-mono text-xs text-foreground">{log.endpoint}</td>
+                  <td className="px-6 py-4 text-muted-foreground font-mono text-xs">
+                    {formatTime(log.created_at)}
+                  </td>
+                  <td className="px-6 py-4 font-mono text-xs text-foreground">{log.stage || 'workflow'}</td>
                   <td className="px-6 py-4">
-                    <Badge className={`font-mono ${getStatusColor(log.status)}`}>{log.status}</Badge>
+                    <Badge className={`font-mono ${getStatusColor(log.status)}`}>{log.status || 'unknown'}</Badge>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`font-mono text-xs ${log.latency > 1000 ? 'text-red-500' : 'text-foreground'}`}>
-                      {log.latency}ms
-                    </span>
+                    <span className="font-mono text-xs text-foreground">—</span>
                   </td>
-                  <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{log.ipAddress}</td>
+                  <td className="px-6 py-4 font-mono text-xs text-muted-foreground">system</td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-xs font-medium text-muted-foreground hover:text-foreground">View</button>
+                    <button className="text-xs font-medium text-muted-foreground hover:text-foreground">
+                      View
+                    </button>
                   </td>
                 </tr>
               ))}

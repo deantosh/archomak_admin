@@ -1,43 +1,98 @@
-'use client';
+'use client'
 
-import { Download, Calendar } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ChartCard } from '@/components/dashboard/chart-card';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { mockAnalyticsData } from '@/lib/mock-data';
+import { useEffect, useMemo, useState } from 'react'
+import { Download } from 'lucide-react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+
+import { ChartCard } from '@/components/dashboard/chart-card'
+import { Button } from '@/components/ui/button'
+import { KunanyeshaAdminReportsSummaryResponse } from '@/lib/kunanyesha-admin-types'
 
 const reportTypes = [
-  { title: 'Monthly Performance', description: 'Revenue, users, and API metrics', icon: '📊' },
-  { title: 'User Analytics', description: 'Detailed user growth and engagement', icon: '👥' },
-  { title: 'API Health', description: 'Request volume, latency, and errors', icon: '🔌' },
-  { title: 'Payment Summary', description: 'Transaction history and reconciliation', icon: '💳' },
-  { title: 'Security Report', description: 'Access logs and security events', icon: '🔐' },
-  { title: 'AI Usage', description: 'AI request costs and model usage', icon: '🤖' },
-];
+  { title: 'Performance Summary', description: 'Operational totals from Kunanyesha', icon: '📊' },
+  { title: 'User Coverage', description: 'Live platform usage and team footprint', icon: '👥' },
+  { title: 'Payment Summary', description: 'Completed, pending, and failed payments', icon: '💳' },
+  { title: 'Workflow Reports', description: 'Generated reports and processing status', icon: '🧾' },
+]
+
+function formatDate(dateString?: string | null) {
+  if (!dateString) return '—'
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
 
 export default function ReportsPage() {
+  const [summary, setSummary] = useState<KunanyeshaAdminReportsSummaryResponse | null>(null)
+
+  useEffect(() => {
+    void fetch('/api/kunanyesha-admin/reports/summary', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: KunanyeshaAdminReportsSummaryResponse | null) => {
+        setSummary(data)
+      })
+  }, [])
+
+  const chartData = useMemo(
+    () =>
+      summary
+        ? [
+            { name: 'Completed', value: summary.completed_reports },
+            { name: 'Pending', value: summary.pending_reports },
+            { name: 'Failed', value: summary.failed_reports },
+          ]
+        : [],
+    [summary],
+  )
+
   return (
     <div className="space-y-6 p-4 lg:p-8">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Reports</h1>
-          <p className="text-muted-foreground mt-1">Generate and download custom reports</p>
+          <p className="text-muted-foreground mt-1">Live report generation visibility from Kunanyesha</p>
         </div>
         <Button>
           <Download size={18} className="mr-2" />
-          Generate Report
+          Export Summary
         </Button>
       </div>
 
-      {/* Report Types */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-card border border-border rounded-2xl p-6">
+          <p className="text-sm font-medium text-muted-foreground mb-2">Total Reports</p>
+          <p className="text-3xl font-bold text-foreground">{summary?.total_reports ?? '—'}</p>
+          <p className="text-xs text-muted-foreground mt-2">Generated across the app</p>
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-6">
+          <p className="text-sm font-medium text-muted-foreground mb-2">Completed</p>
+          <p className="text-3xl font-bold text-emerald-500">{summary?.completed_reports ?? '—'}</p>
+          <p className="text-xs text-muted-foreground mt-2">Ready for users</p>
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-6">
+          <p className="text-sm font-medium text-muted-foreground mb-2">Last Generated</p>
+          <p className="text-lg font-bold text-foreground">{formatDate(summary?.last_generated_at)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Most recent report completion</p>
+        </div>
+      </div>
+
       <div>
         <h2 className="text-lg font-semibold text-foreground mb-4">Available Reports</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {reportTypes.map((report, idx) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {reportTypes.map((report) => (
             <div
-              key={idx}
-              className="bg-card border border-border rounded-2xl p-6 hover:border-primary/50 transition-all duration-200 cursor-pointer hover:shadow-lg"
+              key={report.title}
+              className="bg-card border border-border rounded-2xl p-6 hover:border-primary/50 transition-all duration-200"
             >
               <div className="text-3xl mb-3">{report.icon}</div>
               <h3 className="font-semibold text-foreground mb-1">{report.title}</h3>
@@ -50,54 +105,56 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Recent Reports */}
-      <div>
-        <h2 className="text-lg font-semibold text-foreground mb-4">Recent Reports</h2>
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/50">
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Report</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Generated</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Period</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-foreground">Action</th>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-muted/50">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Metric</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Value</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Context</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                {
+                  metric: 'Completed reports',
+                  value: summary?.completed_reports ?? '—',
+                  context: 'Reports available to end users',
+                },
+                {
+                  metric: 'Pending reports',
+                  value: summary?.pending_reports ?? '—',
+                  context: 'Still processing in workflows',
+                },
+                {
+                  metric: 'Failed reports',
+                  value: summary?.failed_reports ?? '—',
+                  context: 'Need attention or retry',
+                },
+              ].map((row) => (
+                <tr key={row.metric} className="border-b border-border hover:bg-muted/50 transition-colors">
+                  <td className="px-6 py-4 text-sm font-medium text-foreground">{row.metric}</td>
+                  <td className="px-6 py-4 text-sm text-foreground">{row.value}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{row.context}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {[
-                  { name: 'May 2024 Performance Report', date: 'May 31, 2024', period: 'May 1-31, 2024' },
-                  { name: 'Q2 2024 Summary', date: 'Jun 1, 2024', period: 'Apr-Jun 2024' },
-                  { name: 'User Analytics - May', date: 'May 30, 2024', period: 'May 1-31, 2024' },
-                  { name: 'API Health Report', date: 'May 28, 2024', period: 'May 21-28, 2024' },
-                ].map((report, idx) => (
-                  <tr key={idx} className="border-b border-border hover:bg-muted/50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-foreground">{report.name}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{report.date}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{report.period}</td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="text-sm font-medium text-primary hover:text-primary/80">Download</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Performance Chart */}
-      <ChartCard title="Performance Over Time" description="Last 30 days">
+      <ChartCard title="Report Status Breakdown" description="Live counts from Kunanyesha">
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={mockAnalyticsData.daily}>
+          <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis dataKey="date" stroke="#9CA3AF" />
+            <XAxis dataKey="name" stroke="#9CA3AF" />
             <YAxis stroke="#9CA3AF" />
             <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }} />
-            <Bar dataKey="revenue" fill="#10B981" radius={[8, 8, 0, 0]} />
+            <Bar dataKey="value" fill="#10B981" radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
     </div>
-  );
+  )
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, Plus, MoreVertical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,33 +10,37 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { mockUsers } from '@/lib/mock-data';
-
-const roleColors = {
-  'Admin': 'bg-purple-500/10 text-purple-500',
-  'Manager': 'bg-blue-500/10 text-blue-500',
-  'Developer': 'bg-green-500/10 text-green-500',
-  'Analyst': 'bg-orange-500/10 text-orange-500',
-  'Product Manager': 'bg-pink-500/10 text-pink-500',
-};
-
-const statusColors = {
-  'active': 'bg-emerald-500/10 text-emerald-500',
-  'inactive': 'bg-gray-500/10 text-gray-500',
-};
+import { KunanyeshaAdminUserItem, KunanyeshaAdminUsersResponse } from '@/lib/kunanyesha-admin-types';
 
 export default function UsersPage() {
+  const [users, setUsers] = useState<KunanyeshaAdminUserItem[]>([])
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRole, setSelectedRole] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedCounty, setSelectedCounty] = useState<string | null>(null);
 
-  const filteredUsers = mockUsers.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = !selectedRole || user.role === selectedRole;
-    const matchesStatus = !selectedStatus || user.status === selectedStatus;
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  useEffect(() => {
+    void fetch('/api/kunanyesha-admin/users', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: KunanyeshaAdminUsersResponse | null) => {
+        setUsers(data?.items || [])
+      })
+  }, [])
+
+  const availableCounties = Array.from(
+    new Set(users.map((user) => user.county).filter(Boolean) as string[]),
+  )
+
+  const filteredUsers = useMemo(
+    () =>
+      users.filter((user) => {
+        const needle = searchQuery.toLowerCase()
+        const matchesSearch =
+          (user.full_name || '').toLowerCase().includes(needle) ||
+          (user.email || '').toLowerCase().includes(needle)
+        const matchesCounty = !selectedCounty || user.county === selectedCounty
+        return matchesSearch && matchesCounty
+      }),
+    [users, searchQuery, selectedCounty],
+  )
 
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -88,31 +92,16 @@ export default function UsersPage() {
         {/* Filters */}
         <div className="flex flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Role:</span>
+            <span className="text-sm text-muted-foreground">County:</span>
             <select
-              value={selectedRole || ''}
-              onChange={(e) => setSelectedRole(e.target.value || null)}
+              value={selectedCounty || ''}
+              onChange={(e) => setSelectedCounty(e.target.value || null)}
               className="bg-card border border-border rounded-lg px-3 py-1.5 text-sm text-foreground outline-none hover:border-primary/50 transition-colors"
             >
-              <option value="">All Roles</option>
-              <option value="Admin">Admin</option>
-              <option value="Manager">Manager</option>
-              <option value="Developer">Developer</option>
-              <option value="Analyst">Analyst</option>
-              <option value="Product Manager">Product Manager</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Status:</span>
-            <select
-              value={selectedStatus || ''}
-              onChange={(e) => setSelectedStatus(e.target.value || null)}
-              className="bg-card border border-border rounded-lg px-3 py-1.5 text-sm text-foreground outline-none hover:border-primary/50 transition-colors"
-            >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="">All Counties</option>
+              {availableCounties.map((county) => (
+                <option key={county} value={county}>{county}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -137,35 +126,35 @@ export default function UsersPage() {
                 <th className="px-6 py-3 text-right text-xs font-semibold text-foreground">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+              <tbody>
+                {filteredUsers.map((user) => (
+                  <tr key={user.id} className="border-b border-border hover:bg-muted/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-lg">
-                        {user.avatar}
+                        👤
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">{user.name}</p>
+                        <p className="font-medium text-foreground">{user.full_name || 'Unknown user'}</p>
                         <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <Badge className={`${roleColors[user.role as keyof typeof roleColors]} border-0`}>
-                      {user.role}
+                    <Badge className="bg-blue-500/10 text-blue-500 border-0">
+                      {user.job_title || 'User'}
                     </Badge>
                   </td>
                   <td className="px-6 py-4">
-                    <Badge className={`${statusColors[user.status as keyof typeof statusColors]} border-0 capitalize`}>
-                      {user.status}
+                    <Badge className="bg-emerald-500/10 text-emerald-500 border-0 capitalize">
+                      active
                     </Badge>
                   </td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">
-                    {getTimeAgo(user.lastActive)}
+                    {user.updated_at ? getTimeAgo(user.updated_at) : '—'}
                   </td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">
-                    {formatDate(user.joinDate)}
+                    {user.created_at ? formatDate(user.created_at) : '—'}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <DropdownMenu>
