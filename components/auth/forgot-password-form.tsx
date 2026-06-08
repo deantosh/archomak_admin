@@ -20,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { resetPasswordForEmail } from '@/lib/supabase/client'
 import { hasSupabaseEnv } from '@/lib/supabase/config'
+import { toUserFriendlyErrorMessage } from '@/lib/user-friendly-errors'
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Enter a valid email address.'),
@@ -51,7 +52,7 @@ export function ForgotPasswordForm() {
 
     if (!hasSupabaseEnv()) {
       setErrorMessage(
-        'Supabase environment variables are missing. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable password recovery.',
+        'Password recovery is temporarily unavailable because the app setup is incomplete.',
       )
       return
     }
@@ -67,7 +68,7 @@ export function ForgotPasswordForm() {
         setErrorMessage(
           normalizedMessage.includes('rate limit')
             ? FRIENDLY_RATE_LIMIT_MESSAGE
-            : message,
+            : toUserFriendlyErrorMessage(message),
         )
         return
       }
@@ -75,7 +76,11 @@ export function ForgotPasswordForm() {
       setSuccessMessage(SUCCESS_MESSAGE)
       form.reset()
     } catch {
-      setErrorMessage('We could not send the reset link right now. Please try again.')
+      setErrorMessage(
+        toUserFriendlyErrorMessage(
+          'We could not send the reset link right now. Please try again.',
+        ),
+      )
     }
   })
 

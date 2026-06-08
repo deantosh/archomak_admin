@@ -7,6 +7,7 @@ import { ActivityFeed } from '@/components/dashboard/activity-feed'
 import { EmptyState } from '@/components/dashboard/empty-state'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { PortfolioOverviewResponse } from '@/lib/admin-portfolio-types'
+import { toUserFriendlyErrorMessage } from '@/lib/user-friendly-errors'
 
 function formatCurrency(amount: number) {
   return `$${amount.toLocaleString()}`
@@ -36,9 +37,11 @@ export default function DashboardPage() {
             | { detail?: string; message?: string }
             | null
           throw new Error(
-            payload?.detail ||
-              payload?.message ||
-              'We could not load live dashboard data right now.',
+            toUserFriendlyErrorMessage(
+              payload?.detail ||
+                payload?.message ||
+                'We could not load live dashboard data right now.',
+            ),
           )
         }
 

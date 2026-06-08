@@ -24,6 +24,7 @@ import {
 } from '@/lib/supabase/client'
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
 import { hasSupabaseEnv } from '@/lib/supabase/config'
+import { toUserFriendlyErrorMessage } from '@/lib/user-friendly-errors'
 
 const passwordRequirements =
   'Use at least 8 characters, including uppercase, lowercase, and a number.'
@@ -74,7 +75,7 @@ export function ResetPasswordForm() {
     async function initializeRecovery() {
       if (!hasSupabaseEnv()) {
         setErrorMessage(
-          'Supabase environment variables are missing. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable password recovery.',
+          'Password recovery is temporarily unavailable because the app setup is incomplete.',
         )
         setReady(true)
         return
@@ -185,7 +186,11 @@ export function ResetPasswordForm() {
       })
 
       if (error) {
-        setErrorMessage('We could not update your password. Please request a new reset link.')
+        setErrorMessage(
+          toUserFriendlyErrorMessage(
+            'We could not update your password. Please request a new reset link.',
+          ),
+        )
         return
       }
 
@@ -198,7 +203,11 @@ export function ResetPasswordForm() {
         router.replace('/?message=password-updated')
       }, 1200)
     } catch {
-      setErrorMessage('We could not update your password. Please request a new reset link.')
+      setErrorMessage(
+        toUserFriendlyErrorMessage(
+          'We could not update your password. Please request a new reset link.',
+        ),
+      )
     }
   })
 

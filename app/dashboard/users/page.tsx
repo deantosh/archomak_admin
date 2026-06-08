@@ -21,9 +21,12 @@ import {
 import { AdminTeamMember, AdminTeamResponse } from '@/lib/admin-team-types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toUserFriendlyErrorMessage } from '@/lib/user-friendly-errors';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<AdminTeamMember[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -35,11 +38,32 @@ export default function UsersPage() {
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
 
   async function loadTeam() {
-    return fetch('/api/admin-team', { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: AdminTeamResponse | null) => {
-        setUsers(data?.items || [])
-      })
+    setLoadError(null)
+    setLoading(true)
+
+    try {
+      const response = await fetch('/api/admin-team', { cache: 'no-store' })
+      const payload = (await response.json().catch(() => null)) as
+        | ({ detail?: string } & Partial<AdminTeamResponse>)
+        | null
+
+      if (!response.ok) {
+        setUsers([])
+        setLoadError(
+          toUserFriendlyErrorMessage(
+            payload?.detail || 'We could not load the team members right now.',
+          ),
+        )
+        return
+      }
+
+      setUsers(payload?.items || [])
+    } catch {
+      setUsers([])
+      setLoadError('We could not load the team members right now. Please try again shortly.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -106,7 +130,11 @@ export default function UsersPage() {
         | null
 
       if (!response.ok) {
-        setInviteError(payload?.detail || 'We could not send the invitation right now.')
+        setInviteError(
+          toUserFriendlyErrorMessage(
+            payload?.detail || 'We could not send the invitation right now.',
+          ),
+        )
         return
       }
 
@@ -116,7 +144,9 @@ export default function UsersPage() {
       setInviteRole('viewer')
       await loadTeam()
     } catch {
-      setInviteError('We could not send the invitation right now.')
+      setInviteError(
+        toUserFriendlyErrorMessage('We could not send the invitation right now.'),
+      )
     } finally {
       setInviteLoading(false)
     }
@@ -170,8 +200,16 @@ export default function UsersPage() {
 
       {/* Results Count */}
       <div className="text-sm text-muted-foreground">
-        Showing {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}
+        {loading
+          ? 'Loading team members...'
+          : `Showing ${filteredUsers.length} user${filteredUsers.length !== 1 ? 's' : ''}`}
       </div>
+
+      {loadError && (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          {loadError}
+        </div>
+      )}
 
       {/* Users Table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -247,7 +285,7 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {filteredUsers.length === 0 && (
+      {!loading && !loadError && filteredUsers.length === 0 && (
         <div className="text-center py-12">
           <p className="text-muted-foreground">No users found matching your criteria.</p>
         </div>

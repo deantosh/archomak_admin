@@ -38,7 +38,7 @@ const LOGIN_ERROR =
 const ACCESS_DENIED =
   'Access denied. Your account is not authorized to access this dashboard.'
 const CONFIG_ERROR =
-  'Supabase environment variables are missing. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable sign-in.'
+  'Sign-in is temporarily unavailable because the app setup is incomplete.'
 function parseHashParams(hash: string) {
   const cleanHash = hash.startsWith('#') ? hash.slice(1) : hash
   return new URLSearchParams(cleanHash)

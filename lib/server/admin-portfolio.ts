@@ -16,7 +16,7 @@ export async function fetchPortfolioOverview(): Promise<PortfolioOverviewRespons
   const sources = getAdminAppSources()
 
   if (sources.length === 0) {
-    throw new Error('No admin app sources are configured.')
+    throw new Error('No application connections are configured yet.')
   }
 
   const sourcePayloads = await Promise.all(

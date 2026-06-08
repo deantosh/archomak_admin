@@ -20,13 +20,13 @@ export async function GET() {
   const session = await getAuthenticatedUser()
 
   if (!session?.user || !session.accessToken) {
-    return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ detail: 'Please sign in again to continue.' }, { status: 401 })
   }
 
   const access = await getDashboardAccess(session.user)
 
   if (!access.allowed) {
-    return NextResponse.json({ detail: 'Access denied' }, { status: 403 })
+    return NextResponse.json({ detail: 'You do not have permission to view team members.' }, { status: 403 })
   }
 
   const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv()
@@ -48,7 +48,7 @@ export async function GET() {
 
   if (!membershipsResponse.ok) {
     return NextResponse.json(
-      { detail: 'Unable to load organization memberships.' },
+      { detail: 'We could not load your team information right now.' },
       { status: 502 },
     )
   }
@@ -77,7 +77,7 @@ export async function GET() {
 
   if (!membersResponse.ok) {
     return NextResponse.json(
-      { detail: 'Unable to load organization team members.' },
+      { detail: 'We could not load the team members right now.' },
       { status: 502 },
     )
   }
@@ -122,18 +122,18 @@ export async function POST(request: Request) {
   const session = await getAuthenticatedUser()
 
   if (!session?.user || !session.accessToken) {
-    return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ detail: 'Please sign in again to continue.' }, { status: 401 })
   }
 
   const access = await getDashboardAccess(session.user)
 
   if (!access.allowed) {
-    return NextResponse.json({ detail: 'Access denied' }, { status: 403 })
+    return NextResponse.json({ detail: 'You do not have permission to invite team members.' }, { status: 403 })
   }
 
   if (!hasSupabaseServiceRoleEnv()) {
     return NextResponse.json(
-      { detail: 'Missing SUPABASE_SERVICE_ROLE_KEY.' },
+      { detail: 'Invitations are not fully configured yet.' },
       { status: 500 },
     )
   }
@@ -144,11 +144,11 @@ export async function POST(request: Request) {
   const requestedRole = body?.role?.trim().toLowerCase() || 'viewer'
 
   if (!email || !email.includes('@')) {
-    return NextResponse.json({ detail: 'A valid email address is required.' }, { status: 400 })
+    return NextResponse.json({ detail: 'Enter a valid work email address.' }, { status: 400 })
   }
 
   if (!ALLOWED_ROLES.includes(requestedRole)) {
-    return NextResponse.json({ detail: 'Invalid team role selected.' }, { status: 400 })
+    return NextResponse.json({ detail: 'Choose a valid team role.' }, { status: 400 })
   }
 
   const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv()
@@ -168,7 +168,7 @@ export async function POST(request: Request) {
 
   if (!membershipsResponse.ok) {
     return NextResponse.json(
-      { detail: 'Unable to resolve your organization membership.' },
+      { detail: 'We could not verify your team membership right now.' },
       { status: 502 },
     )
   }
@@ -181,7 +181,7 @@ export async function POST(request: Request) {
 
   if (!membership?.organization_id) {
     return NextResponse.json(
-      { detail: 'No active organization membership found for the current admin.' },
+      { detail: 'Your account is not linked to an active team yet.' },
       { status: 400 },
     )
   }
@@ -219,7 +219,7 @@ export async function POST(request: Request) {
         detail:
           invitePayload?.error_description ||
           invitePayload?.msg ||
-          'Unable to send the invitation email.',
+          'We could not send the invitation right now.',
       },
       { status: 502 },
     )
@@ -246,7 +246,7 @@ export async function POST(request: Request) {
 
   if (!profileResponse.ok) {
     return NextResponse.json(
-      { detail: 'Invitation sent, but the staff profile could not be prepared.' },
+      { detail: 'The invitation was sent, but we could not finish preparing the staff account.' },
       { status: 502 },
     )
   }
@@ -273,7 +273,7 @@ export async function POST(request: Request) {
 
   if (!membershipUpsertResponse.ok) {
     return NextResponse.json(
-      { detail: 'Invitation sent, but the organization membership could not be saved.' },
+      { detail: 'The invitation was sent, but we could not finish linking the team membership.' },
       { status: 502 },
     )
   }

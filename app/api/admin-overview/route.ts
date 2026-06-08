@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   if (!hasPortfolioSources()) {
     return NextResponse.json(
-      { detail: 'No connected admin application sources are configured.' },
+      { detail: 'No application connections are configured yet.' },
       { status: 500 },
     )
   }
@@ -19,7 +19,9 @@ export async function GET() {
     return NextResponse.json(
       {
         detail:
-          error instanceof Error ? error.message : 'Unable to fetch connected application data.',
+          error instanceof Error
+            ? error.message
+            : 'We could not load the connected application data right now.',
       },
       { status: 502 },
     )

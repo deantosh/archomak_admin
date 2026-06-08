@@ -11,12 +11,12 @@ export async function POST(request: Request) {
   const session = await getAuthenticatedUser()
 
   if (!session?.user) {
-    return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ detail: 'Please open the latest invitation link and try again.' }, { status: 401 })
   }
 
   if (!hasSupabaseServiceRoleEnv()) {
     return NextResponse.json(
-      { detail: 'Missing SUPABASE_SERVICE_ROLE_KEY.' },
+      { detail: 'Invitations are not fully configured yet.' },
       { status: 500 },
     )
   }
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
   if (!membershipResponse.ok) {
     return NextResponse.json(
-      { detail: 'Unable to verify invitation membership.' },
+      { detail: 'We could not verify your invitation right now.' },
       { status: 502 },
     )
   }
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
   if (!membership?.id) {
     return NextResponse.json(
-      { detail: 'No pending invitation was found for this account.' },
+      { detail: 'This invitation is no longer valid. Please request a new one.' },
       { status: 400 },
     )
   }
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
   if (!profileResponse.ok) {
     return NextResponse.json(
-      { detail: 'Unable to finalize the invited staff profile.' },
+      { detail: 'We could not finish setting up your staff profile right now.' },
       { status: 502 },
     )
   }
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
 
   if (!activationResponse.ok) {
     return NextResponse.json(
-      { detail: 'Unable to activate the organization membership.' },
+      { detail: 'We could not activate your team access right now.' },
       { status: 502 },
     )
   }

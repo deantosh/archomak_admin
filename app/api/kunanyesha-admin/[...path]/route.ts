@@ -10,7 +10,7 @@ export async function GET(
 ) {
   if (!hasKunanyeshaAdminEnv()) {
     return NextResponse.json(
-      { detail: 'Kunanyesha admin API environment variables are missing.' },
+      { detail: 'The application connection is incomplete.' },
       { status: 500 },
     )
   }
@@ -25,7 +25,7 @@ export async function GET(
         detail:
           error instanceof Error
             ? error.message
-            : 'Unable to fetch Kunanyesha admin data.',
+            : 'We could not load the connected application data right now.',
       },
       { status: 502 },
     )

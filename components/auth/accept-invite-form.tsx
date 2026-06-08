@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { persistSession } from '@/lib/supabase/client'
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
 import { hasSupabaseEnv } from '@/lib/supabase/config'
+import { toUserFriendlyErrorMessage } from '@/lib/user-friendly-errors'
 
 const inviteRequirements =
   'Use at least 8 characters, including uppercase, lowercase, and a number.'
@@ -74,7 +75,7 @@ export function AcceptInviteForm() {
     async function initializeInvite() {
       if (!hasSupabaseEnv()) {
         setErrorMessage(
-          'Supabase environment variables are missing. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable invitations.',
+          'Invitations are temporarily unavailable because the app setup is incomplete.',
         )
         setReady(true)
         return
@@ -166,7 +167,11 @@ export function AcceptInviteForm() {
       })
 
       if (error) {
-        setErrorMessage('We could not finish setting up your account. Please request a new invitation.')
+        setErrorMessage(
+          toUserFriendlyErrorMessage(
+            'We could not finish setting up your account. Please request a new invitation.',
+          ),
+        )
         return
       }
 
@@ -185,7 +190,9 @@ export function AcceptInviteForm() {
           | { detail?: string }
           | null
         setErrorMessage(
-          payload?.detail || 'We could not activate your team membership. Please contact an administrator.',
+          toUserFriendlyErrorMessage(
+            payload?.detail || 'We could not activate your team membership. Please contact an administrator.',
+          ),
         )
         return
       }
@@ -198,7 +205,11 @@ export function AcceptInviteForm() {
         router.refresh()
       }, 1200)
     } catch {
-      setErrorMessage('We could not finish setting up your account. Please request a new invitation.')
+      setErrorMessage(
+        toUserFriendlyErrorMessage(
+          'We could not finish setting up your account. Please request a new invitation.',
+        ),
+      )
     }
   })
 

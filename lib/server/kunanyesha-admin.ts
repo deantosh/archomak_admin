@@ -113,7 +113,7 @@ export async function fetchAdminSource<T>(
 
 export async function fetchKunanyeshaAdmin(path: string, searchParams?: URLSearchParams) {
   if (!baseUrl || !apiKey) {
-    throw new Error('Missing KUNANYESHA_ADMIN_API_URL or KUNANYESHA_ADMIN_API_KEY')
+    throw new Error('The dashboard connection is incomplete.')
   }
 
   return fetchAdminSource(

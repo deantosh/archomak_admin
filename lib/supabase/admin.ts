@@ -6,7 +6,7 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 function getServiceRoleKey() {
   if (!serviceRoleKey) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY.')
+    throw new Error('Invitations are not fully configured yet.')
   }
 
   return serviceRoleKey
