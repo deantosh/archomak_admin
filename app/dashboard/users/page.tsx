@@ -1,32 +1,53 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Search, Plus, MoreVertical } from 'lucide-react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { Search, Plus, MoreVertical, LoaderCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { KunanyeshaAdminUserItem, KunanyeshaAdminUsersResponse } from '@/lib/kunanyesha-admin-types';
+import { AdminTeamMember, AdminTeamResponse } from '@/lib/admin-team-types';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<KunanyeshaAdminUserItem[]>([])
+  const [users, setUsers] = useState<AdminTeamMember[]>([])
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCounty, setSelectedCounty] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteFullName, setInviteFullName] = useState('');
+  const [inviteRole, setInviteRole] = useState('viewer');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
 
-  useEffect(() => {
-    void fetch('/api/kunanyesha-admin/users', { cache: 'no-store' })
+  async function loadTeam() {
+    return fetch('/api/admin-team', { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: KunanyeshaAdminUsersResponse | null) => {
+      .then((data: AdminTeamResponse | null) => {
         setUsers(data?.items || [])
       })
+  }
+
+  useEffect(() => {
+    void loadTeam()
   }, [])
 
-  const availableCounties = Array.from(
-    new Set(users.map((user) => user.county).filter(Boolean) as string[]),
+  const availableRoles = Array.from(
+    new Set(users.map((user) => user.role).filter(Boolean) as string[]),
   )
 
   const filteredUsers = useMemo(
@@ -36,10 +57,10 @@ export default function UsersPage() {
         const matchesSearch =
           (user.full_name || '').toLowerCase().includes(needle) ||
           (user.email || '').toLowerCase().includes(needle)
-        const matchesCounty = !selectedCounty || user.county === selectedCounty
-        return matchesSearch && matchesCounty
+        const matchesRole = !selectedRole || user.role === selectedRole
+        return matchesSearch && matchesRole
       }),
-    [users, searchQuery, selectedCounty],
+    [users, searchQuery, selectedRole],
   )
 
   function formatDate(dateString: string) {
@@ -61,6 +82,46 @@ export default function UsersPage() {
     return formatDate(dateString);
   }
 
+  async function handleInviteSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setInviteError(null)
+    setInviteSuccess(null)
+    setInviteLoading(true)
+
+    try {
+      const response = await fetch('/api/admin-team', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: inviteEmail,
+          fullName: inviteFullName,
+          role: inviteRole.toLowerCase(),
+        }),
+      })
+
+      const payload = (await response.json().catch(() => null)) as
+        | { detail?: string }
+        | null
+
+      if (!response.ok) {
+        setInviteError(payload?.detail || 'We could not send the invitation right now.')
+        return
+      }
+
+      setInviteSuccess(payload?.detail || `Invitation sent to ${inviteEmail}.`)
+      setInviteEmail('')
+      setInviteFullName('')
+      setInviteRole('viewer')
+      await loadTeam()
+    } catch {
+      setInviteError('We could not send the invitation right now.')
+    } finally {
+      setInviteLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6 p-4 lg:p-8">
       {/* Header */}
@@ -69,7 +130,7 @@ export default function UsersPage() {
           <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Users</h1>
           <p className="text-muted-foreground mt-1">Manage team members and permissions</p>
         </div>
-        <Button className="w-full sm:w-auto">
+        <Button className="w-full sm:w-auto" onClick={() => setInviteOpen(true)}>
           <Plus size={18} className="mr-2" />
           Invite User
         </Button>
@@ -92,15 +153,15 @@ export default function UsersPage() {
         {/* Filters */}
         <div className="flex flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">County:</span>
+            <span className="text-sm text-muted-foreground">Role:</span>
             <select
-              value={selectedCounty || ''}
-              onChange={(e) => setSelectedCounty(e.target.value || null)}
+              value={selectedRole || ''}
+              onChange={(e) => setSelectedRole(e.target.value || null)}
               className="bg-card border border-border rounded-lg px-3 py-1.5 text-sm text-foreground outline-none hover:border-primary/50 transition-colors"
             >
-              <option value="">All Counties</option>
-              {availableCounties.map((county) => (
-                <option key={county} value={county}>{county}</option>
+              <option value="">All Roles</option>
+              {availableRoles.map((role) => (
+                <option key={role} value={role}>{role}</option>
               ))}
             </select>
           </div>
@@ -142,19 +203,27 @@ export default function UsersPage() {
                   </td>
                   <td className="px-6 py-4">
                     <Badge className="bg-blue-500/10 text-blue-500 border-0">
-                      {user.job_title || 'User'}
+                      {user.role}
                     </Badge>
                   </td>
                   <td className="px-6 py-4">
-                    <Badge className="bg-emerald-500/10 text-emerald-500 border-0 capitalize">
-                      active
+                    <Badge
+                      className={`border-0 capitalize ${
+                        user.status === 'active'
+                          ? 'bg-emerald-500/10 text-emerald-500'
+                          : user.status === 'invited'
+                            ? 'bg-amber-500/10 text-amber-500'
+                            : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {user.status}
                     </Badge>
                   </td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">
                     {user.updated_at ? getTimeAgo(user.updated_at) : '—'}
                   </td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">
-                    {user.created_at ? formatDate(user.created_at) : '—'}
+                    {user.joined_at ? formatDate(user.joined_at) : user.created_at ? formatDate(user.created_at) : '—'}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <DropdownMenu>
@@ -183,6 +252,95 @@ export default function UsersPage() {
           <p className="text-muted-foreground">No users found matching your criteria.</p>
         </div>
       )}
+
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Invite Team Member</DialogTitle>
+            <DialogDescription>
+              Send a dashboard invitation to a new Archomak employee.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form className="space-y-4" onSubmit={handleInviteSubmit}>
+            <div className="space-y-2">
+              <Label htmlFor="invite-full-name">Full Name</Label>
+              <Input
+                id="invite-full-name"
+                value={inviteFullName}
+                onChange={(event) => setInviteFullName(event.target.value)}
+                placeholder="Jane Doe"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="invite-email">Email Address</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                value={inviteEmail}
+                onChange={(event) => setInviteEmail(event.target.value)}
+                placeholder="jane@archomak.com"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="invite-role">Role</Label>
+              <select
+                id="invite-role"
+                value={inviteRole}
+                onChange={(event) => setInviteRole(event.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none"
+              >
+                <option value="owner">Owner</option>
+                <option value="admin">Admin</option>
+                <option value="manager">Manager</option>
+                <option value="developer">Developer</option>
+                <option value="analyst">Analyst</option>
+                <option value="viewer">Viewer</option>
+              </select>
+            </div>
+
+            {(inviteError || inviteSuccess) && (
+              <div
+                className={`rounded-lg px-3 py-2 text-sm ${
+                  inviteError
+                    ? 'bg-red-500/10 text-red-500'
+                    : 'bg-emerald-500/10 text-emerald-500'
+                }`}
+              >
+                {inviteError || inviteSuccess}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setInviteOpen(false)
+                  setInviteError(null)
+                  setInviteSuccess(null)
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={inviteLoading}>
+                {inviteLoading ? (
+                  <>
+                    <LoaderCircle className="mr-2 size-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  'Send Invitation'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

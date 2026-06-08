@@ -71,6 +71,12 @@ export function LoginForm() {
     const refreshToken = recoveryHashParams.get('refresh_token')
     const hashError = recoveryHashParams.get('error')
     const hashErrorCode = recoveryHashParams.get('error_code')
+    const hashInvitationType = recoveryHashParams.get('type')
+
+    if (hashInvitationType === 'invite') {
+      router.replace(`/accept-invite${window.location.search}${window.location.hash}`)
+      return
+    }
 
     if (
       recoveryType === 'recovery' ||
