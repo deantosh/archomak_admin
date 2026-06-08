@@ -31,12 +31,10 @@ export async function GET() {
   }
 
   const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv()
-  const readHeaders = hasSupabaseServiceRoleEnv()
-    ? getSupabaseAdminHeaders()
-    : {
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${session.accessToken}`,
-      }
+  const readHeaders = {
+    apikey: supabaseAnonKey,
+    Authorization: `Bearer ${session.accessToken}`,
+  }
 
   const membershipsUrl = new URL(`${supabaseUrl}/rest/v1/organization_members`)
   membershipsUrl.searchParams.set('select', 'organization_id')
@@ -61,7 +59,13 @@ export async function GET() {
   )
 
   if (organizationIds.length === 0) {
-    return NextResponse.json({ total: 0, items: [] })
+    return NextResponse.json(
+      {
+        detail:
+          'Your account can access the dashboard, but no active team membership was found for loading team members.',
+      },
+      { status: 409 },
+    )
   }
 
   const membersUrl = new URL(`${supabaseUrl}/rest/v1/organization_members`)
@@ -90,6 +94,21 @@ export async function GET() {
       organizations?: { name?: string | null } | null
     }
   >
+
+  if (rows.length === 0) {
+    return NextResponse.json(
+      {
+        detail:
+          'No team members were returned for your active organization. This usually means the membership query is being restricted by database access rules.',
+        debug: {
+          authenticated_user_id: session.user.id,
+          matched_organization_ids: organizationIds,
+          active_membership_rows: memberships.length,
+        },
+      },
+      { status: 409 },
+    )
+  }
 
   const items: AdminTeamMember[] = rows.map((row) => ({
     id: String(row.id),

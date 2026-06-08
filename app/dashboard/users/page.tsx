@@ -27,6 +27,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<AdminTeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadDebug, setLoadDebug] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -39,12 +40,13 @@ export default function UsersPage() {
 
   async function loadTeam() {
     setLoadError(null)
+    setLoadDebug(null)
     setLoading(true)
 
     try {
       const response = await fetch('/api/admin-team', { cache: 'no-store' })
       const payload = (await response.json().catch(() => null)) as
-        | ({ detail?: string } & Partial<AdminTeamResponse>)
+        | ({ detail?: string; debug?: Record<string, unknown> } & Partial<AdminTeamResponse>)
         | null
 
       if (!response.ok) {
@@ -54,6 +56,9 @@ export default function UsersPage() {
             payload?.detail || 'We could not load the team members right now.',
           ),
         )
+        if (payload?.debug) {
+          setLoadDebug(JSON.stringify(payload.debug, null, 2))
+        }
         return
       }
 
@@ -61,6 +66,7 @@ export default function UsersPage() {
     } catch {
       setUsers([])
       setLoadError('We could not load the team members right now. Please try again shortly.')
+      setLoadDebug(null)
     } finally {
       setLoading(false)
     }
@@ -206,8 +212,13 @@ export default function UsersPage() {
       </div>
 
       {loadError && (
-        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          {loadError}
+        <div className="space-y-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <p>{loadError}</p>
+          {loadDebug && (
+            <pre className="overflow-x-auto rounded-xl bg-black/20 p-3 text-xs text-amber-50">
+              {loadDebug}
+            </pre>
+          )}
         </div>
       )}
 
