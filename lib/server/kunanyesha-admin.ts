@@ -2,6 +2,18 @@ import 'server-only'
 
 const baseUrl = process.env.KUNANYESHA_ADMIN_API_URL
 const apiKey = process.env.KUNANYESHA_ADMIN_API_KEY
+const KNOWN_ADMIN_ENDPOINTS = [
+  'summary',
+  'health',
+  'activity',
+  'users',
+  'payments',
+  'payments/summary',
+  'reports/summary',
+  'logs',
+  'notifications',
+  'system-health',
+]
 
 export interface AdminAppSource {
   key: string
@@ -15,13 +27,32 @@ export function hasKunanyeshaAdminEnv() {
   return Boolean(baseUrl && apiKey)
 }
 
+function normalizeAdminBaseUrl(value: string) {
+  let normalized = value.trim().replace(/\/$/, '')
+
+  for (const endpoint of KNOWN_ADMIN_ENDPOINTS.sort((left, right) => right.length - left.length)) {
+    const suffix = `/${endpoint}`
+    if (normalized.endsWith(suffix)) {
+      normalized = normalized.slice(0, -suffix.length)
+      break
+    }
+  }
+
+  return normalized
+}
+
 export function getAdminAppSources(): AdminAppSource[] {
   const configured = process.env.ADMIN_APP_SOURCES
 
   if (configured) {
     try {
       const parsed = JSON.parse(configured) as AdminAppSource[]
-      return parsed.filter((item) => item?.key && item?.label && item?.baseUrl && item?.apiKey)
+      return parsed
+        .filter((item) => item?.key && item?.label && item?.baseUrl && item?.apiKey)
+        .map((item) => ({
+          ...item,
+          baseUrl: normalizeAdminBaseUrl(item.baseUrl),
+        }))
     } catch {
       return []
     }
@@ -35,7 +66,7 @@ export function getAdminAppSources(): AdminAppSource[] {
     {
       key: 'kunanyesha',
       label: 'Kunanyesha',
-      baseUrl,
+      baseUrl: normalizeAdminBaseUrl(baseUrl),
       apiKey,
       icon: '🌧️',
     },
@@ -47,7 +78,7 @@ export async function fetchAdminSource<T>(
   path: string,
   searchParams?: URLSearchParams,
 ): Promise<T> {
-  const trimmedBase = source.baseUrl.replace(/\/$/, '')
+  const trimmedBase = normalizeAdminBaseUrl(source.baseUrl)
   const trimmedPath = path.replace(/^\/+/, '')
   const url = new URL(`${trimmedBase}/${trimmedPath}`)
 
@@ -71,7 +102,9 @@ export async function fetchAdminSource<T>(
 
   if (!response.ok) {
     throw new Error(
-      payload?.detail || payload?.message || `${source.label} admin request failed (${response.status})`,
+      payload?.detail ||
+        payload?.message ||
+        `${source.label} admin request failed (${response.status}) at ${url.pathname}`,
     )
   }
 
@@ -87,7 +120,7 @@ export async function fetchKunanyeshaAdmin(path: string, searchParams?: URLSearc
     {
       key: 'kunanyesha',
       label: 'Kunanyesha',
-      baseUrl,
+      baseUrl: normalizeAdminBaseUrl(baseUrl),
       apiKey,
       icon: '🌧️',
     },
