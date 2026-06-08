@@ -32,7 +32,14 @@ export default function DashboardPage() {
         const response = await fetch('/api/admin-overview', { cache: 'no-store' })
 
         if (!response.ok) {
-          throw new Error('We could not load live dashboard data right now.')
+          const payload = (await response.json().catch(() => null)) as
+            | { detail?: string; message?: string }
+            | null
+          throw new Error(
+            payload?.detail ||
+              payload?.message ||
+              'We could not load live dashboard data right now.',
+          )
         }
 
         const data = (await response.json()) as PortfolioOverviewResponse
