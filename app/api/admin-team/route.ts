@@ -31,19 +31,20 @@ export async function GET() {
   }
 
   const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv()
+  const readHeaders = hasSupabaseServiceRoleEnv()
+    ? getSupabaseAdminHeaders()
+    : {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${session.accessToken}`,
+      }
 
   const membershipsUrl = new URL(`${supabaseUrl}/rest/v1/organization_members`)
   membershipsUrl.searchParams.set('select', 'organization_id')
   membershipsUrl.searchParams.set('user_id', `eq.${session.user.id}`)
   membershipsUrl.searchParams.set('status', 'eq.active')
 
-  const baseHeaders = {
-    apikey: supabaseAnonKey,
-    Authorization: `Bearer ${session.accessToken}`,
-  }
-
   const membershipsResponse = await fetch(membershipsUrl.toString(), {
-    headers: baseHeaders,
+    headers: readHeaders,
     cache: 'no-store',
   })
 
@@ -72,7 +73,7 @@ export async function GET() {
   membersUrl.searchParams.set('order', 'created_at.desc')
 
   const membersResponse = await fetch(membersUrl.toString(), {
-    headers: baseHeaders,
+    headers: readHeaders,
     cache: 'no-store',
   })
 
