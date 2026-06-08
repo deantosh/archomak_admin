@@ -5,6 +5,7 @@ import { AdminTeamMember } from '@/lib/admin-team-types'
 import { getSupabaseAdminHeaders, getSupabaseAuthAdminUrl, getSupabaseRestUrl, hasSupabaseServiceRoleEnv } from '@/lib/supabase/admin'
 import { getSupabaseEnv } from '@/lib/supabase/config'
 import { getAuthenticatedUser } from '@/lib/supabase/server'
+import { toUserFriendlyErrorMessage } from '@/lib/user-friendly-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -216,10 +217,11 @@ export async function POST(request: Request) {
   if (!inviteResponse.ok || !invitePayload?.user?.id) {
     return NextResponse.json(
       {
-        detail:
+        detail: toUserFriendlyErrorMessage(
           invitePayload?.error_description ||
-          invitePayload?.msg ||
-          'We could not send the invitation right now.',
+            invitePayload?.msg ||
+            'We could not send the invitation right now.',
+        ),
       },
       { status: 502 },
     )
