@@ -221,8 +221,17 @@ export async function POST(request: Request) {
   })
 
   if (!membershipsResponse.ok) {
+    const errorPayload = await readErrorPayload(membershipsResponse)
     return NextResponse.json(
-      { detail: 'We could not verify your team membership right now.' },
+      {
+        detail: 'We could not verify your team membership right now.',
+        debug: {
+          step: 'verify-inviter-membership',
+          status: membershipsResponse.status,
+          authenticated_user_id: session.user.id,
+          response: errorPayload,
+        },
+      },
       { status: 502 },
     )
   }
@@ -275,6 +284,13 @@ export async function POST(request: Request) {
             invitePayload?.msg ||
             'We could not send the invitation right now.',
         ),
+        debug: {
+          step: 'create-supabase-invite',
+          status: inviteResponse.status,
+          invited_email: email,
+          organization_id: membership.organization_id,
+          response: invitePayload,
+        },
       },
       { status: 502 },
     )
@@ -300,8 +316,18 @@ export async function POST(request: Request) {
   )
 
   if (!profileResponse.ok) {
+    const errorPayload = await readErrorPayload(profileResponse)
     return NextResponse.json(
-      { detail: 'The invitation was sent, but we could not finish preparing the staff account.' },
+      {
+        detail: 'The invitation was sent, but we could not finish preparing the staff account.',
+        debug: {
+          step: 'upsert-profile',
+          status: profileResponse.status,
+          invited_user_id: invitePayload.user.id,
+          invited_email: email,
+          response: errorPayload,
+        },
+      },
       { status: 502 },
     )
   }
@@ -327,8 +353,18 @@ export async function POST(request: Request) {
   )
 
   if (!membershipUpsertResponse.ok) {
+    const errorPayload = await readErrorPayload(membershipUpsertResponse)
     return NextResponse.json(
-      { detail: 'The invitation was sent, but we could not finish linking the team membership.' },
+      {
+        detail: 'The invitation was sent, but we could not finish linking the team membership.',
+        debug: {
+          step: 'upsert-team-membership',
+          status: membershipUpsertResponse.status,
+          invited_user_id: invitePayload.user.id,
+          organization_id: membership.organization_id,
+          response: errorPayload,
+        },
+      },
       { status: 502 },
     )
   }

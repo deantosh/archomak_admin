@@ -36,6 +36,7 @@ export default function UsersPage() {
   const [inviteRole, setInviteRole] = useState('viewer');
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteDebug, setInviteDebug] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
 
   async function loadTeam() {
@@ -115,6 +116,7 @@ export default function UsersPage() {
   async function handleInviteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setInviteError(null)
+    setInviteDebug(null)
     setInviteSuccess(null)
     setInviteLoading(true)
 
@@ -132,7 +134,7 @@ export default function UsersPage() {
       })
 
       const payload = (await response.json().catch(() => null)) as
-        | { detail?: string }
+        | { detail?: string; debug?: Record<string, unknown> }
         | null
 
       if (!response.ok) {
@@ -141,6 +143,9 @@ export default function UsersPage() {
             payload?.detail || 'We could not send the invitation right now.',
           ),
         )
+        if (payload?.debug) {
+          setInviteDebug(JSON.stringify(payload.debug, null, 2))
+        }
         return
       }
 
@@ -153,6 +158,7 @@ export default function UsersPage() {
       setInviteError(
         toUserFriendlyErrorMessage('We could not send the invitation right now.'),
       )
+      setInviteDebug(null)
     } finally {
       setInviteLoading(false)
     }
@@ -354,13 +360,18 @@ export default function UsersPage() {
 
             {(inviteError || inviteSuccess) && (
               <div
-                className={`rounded-lg px-3 py-2 text-sm ${
+                className={`space-y-3 rounded-lg px-3 py-2 text-sm ${
                   inviteError
                     ? 'bg-red-500/10 text-red-500'
                     : 'bg-emerald-500/10 text-emerald-500'
                 }`}
               >
-                {inviteError || inviteSuccess}
+                <p>{inviteError || inviteSuccess}</p>
+                {inviteError && inviteDebug && (
+                  <pre className="overflow-x-auto rounded-xl bg-black/20 p-3 text-xs text-red-100">
+                    {inviteDebug}
+                  </pre>
+                )}
               </div>
             )}
 
@@ -371,6 +382,7 @@ export default function UsersPage() {
                 onClick={() => {
                   setInviteOpen(false)
                   setInviteError(null)
+                  setInviteDebug(null)
                   setInviteSuccess(null)
                 }}
               >
