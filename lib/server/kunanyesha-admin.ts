@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { getSupabaseAdminHeaders, getSupabaseRestUrl, hasSupabaseServiceRoleEnv } from '@/lib/supabase/admin'
+
 const baseUrl = process.env.KUNANYESHA_ADMIN_API_URL
 const apiKey = process.env.KUNANYESHA_ADMIN_API_KEY
 const KNOWN_ADMIN_ENDPOINTS = [
@@ -16,6 +18,7 @@ const KNOWN_ADMIN_ENDPOINTS = [
 ]
 
 export interface AdminAppSource {
+  id?: string
   key: string
   label: string
   baseUrl: string
@@ -27,7 +30,19 @@ export function hasKunanyeshaAdminEnv() {
   return Boolean(baseUrl && apiKey)
 }
 
-function normalizeAdminBaseUrl(value: string) {
+type ProductRow = {
+  id: string
+  name?: string | null
+  slug?: string | null
+  icon?: string | null
+}
+
+type ProductSettingsRow = {
+  product_id: string
+  settings?: Record<string, unknown> | null
+}
+
+export function normalizeAdminBaseUrl(value: string) {
   let normalized = value.trim().replace(/\/$/, '')
 
   for (const endpoint of KNOWN_ADMIN_ENDPOINTS.sort((left, right) => right.length - left.length)) {
@@ -41,7 +56,107 @@ function normalizeAdminBaseUrl(value: string) {
   return normalized
 }
 
-export function getAdminAppSources(): AdminAppSource[] {
+function getConnectionSettings(settings: Record<string, unknown> | null | undefined) {
+  const connection =
+    (settings?.connection as Record<string, unknown> | undefined) ||
+    (settings?.admin_api as Record<string, unknown> | undefined) ||
+    {}
+
+  const baseUrl =
+    typeof connection.base_url === 'string'
+      ? connection.base_url
+      : typeof connection.baseUrl === 'string'
+        ? connection.baseUrl
+        : null
+
+  const apiKey =
+    typeof connection.api_key === 'string'
+      ? connection.api_key
+      : typeof connection.apiKey === 'string'
+        ? connection.apiKey
+        : null
+
+  const enabledRaw =
+    typeof connection.enabled === 'boolean'
+      ? connection.enabled
+      : typeof settings?.connection_enabled === 'boolean'
+        ? settings.connection_enabled
+        : true
+
+  return {
+    baseUrl,
+    apiKey,
+    enabled: enabledRaw !== false,
+  }
+}
+
+async function fetchDatabaseAdminSources(): Promise<AdminAppSource[]> {
+  if (!hasSupabaseServiceRoleEnv()) {
+    return []
+  }
+
+  const productsResponse = await fetch(
+    `${getSupabaseRestUrl('products')}?select=id,name,slug,icon&order=created_at.desc`,
+    {
+      headers: getSupabaseAdminHeaders(),
+      cache: 'no-store',
+    },
+  )
+
+  if (!productsResponse.ok) {
+    return []
+  }
+
+  const products = (await productsResponse.json()) as ProductRow[]
+
+  if (!products.length) {
+    return []
+  }
+
+  const productIds = products.map((product) => product.id).filter(Boolean)
+  const settingsResponse = await fetch(
+    `${getSupabaseRestUrl('product_settings')}?select=product_id,settings&product_id=in.(${productIds.join(',')})`,
+    {
+      headers: getSupabaseAdminHeaders(),
+      cache: 'no-store',
+    },
+  )
+
+  if (!settingsResponse.ok) {
+    return []
+  }
+
+  const settingsRows = (await settingsResponse.json()) as ProductSettingsRow[]
+  const settingsByProductId = new Map(settingsRows.map((row) => [row.product_id, row.settings ?? {}]))
+
+  return products
+    .map((product) => {
+      const settings = settingsByProductId.get(product.id) ?? {}
+      const connection = getConnectionSettings(settings)
+
+      if (!product.slug || !product.name || !connection.baseUrl || !connection.apiKey || !connection.enabled) {
+        return null
+      }
+
+      return {
+        id: product.id,
+        key: product.slug,
+        label: product.name,
+        baseUrl: normalizeAdminBaseUrl(connection.baseUrl),
+        apiKey: connection.apiKey,
+        icon: product.icon ?? '📦',
+      } satisfies AdminAppSource
+    })
+    .filter((item): item is AdminAppSource => Boolean(item))
+}
+
+export async function getAdminAppSources(): Promise<AdminAppSource[]> {
+  const databaseSources = await fetchDatabaseAdminSources()
+
+  if (databaseSources.length > 0) {
+    return databaseSources
+  }
+
   const configured = process.env.ADMIN_APP_SOURCES
 
   if (configured) {

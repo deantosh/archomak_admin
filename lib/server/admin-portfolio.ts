@@ -8,18 +8,14 @@ import {
 } from '@/lib/kunanyesha-admin-types'
 import { fetchAdminSource, getAdminAppSources } from '@/lib/server/kunanyesha-admin'
 
-export function hasPortfolioSources() {
-  return getAdminAppSources().length > 0
-}
-
 export async function fetchPortfolioOverview(): Promise<PortfolioOverviewResponse> {
-  const sources = getAdminAppSources()
+  const sources = await getAdminAppSources()
 
   if (sources.length === 0) {
     throw new Error('No application connections are configured yet.')
   }
 
-  const sourcePayloads = await Promise.all(
+  const sourcePayloads = await Promise.allSettled(
     sources.map(async (source) => {
       const [summary, health, activity] = await Promise.all([
         fetchAdminSource<KunanyeshaAdminSummaryResponse>(source, 'summary'),
@@ -45,9 +41,21 @@ export async function fetchPortfolioOverview(): Promise<PortfolioOverviewRespons
     }),
   )
 
-  const apps = sourcePayloads.map((item) => item.appSummary)
+  const successfulPayloads = sourcePayloads
+    .filter((item): item is PromiseFulfilledResult<{ appSummary: PortfolioAppSummary; activityItems: PortfolioActivityItem[] }> => item.status === 'fulfilled')
+    .map((item) => item.value)
+
+  if (successfulPayloads.length === 0) {
+    const firstFailure = sourcePayloads.find(
+      (item): item is PromiseRejectedResult => item.status === 'rejected',
+    )
+    throw new Error(firstFailure?.reason instanceof Error ? firstFailure.reason.message : 'We could not load live application data right now.')
+  }
+
+  const apps = successfulPayloads.map((item) => item.appSummary)
   const activity = sourcePayloads
-    .flatMap((item) => item.activityItems)
+    .filter((item): item is PromiseFulfilledResult<{ appSummary: PortfolioAppSummary; activityItems: PortfolioActivityItem[] }> => item.status === 'fulfilled')
+    .flatMap((item) => item.value.activityItems)
     .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime())
     .slice(0, 12)
 
