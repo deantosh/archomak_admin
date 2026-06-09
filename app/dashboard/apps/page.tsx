@@ -36,7 +36,8 @@ export default function AppsPage() {
   const [slug, setSlug] = useState('')
   const [description, setDescription] = useState('')
   const [icon, setIcon] = useState('📦')
-  const [logoUrl, setLogoUrl] = useState('')
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null)
   const [environment, setEnvironment] = useState('production')
   const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
@@ -72,6 +73,14 @@ export default function AppsPage() {
     void loadApplications()
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (logoPreviewUrl) {
+        URL.revokeObjectURL(logoPreviewUrl)
+      }
+    }
+  }, [logoPreviewUrl])
+
   const filteredApps = useMemo(
     () =>
       apps.filter((app) =>
@@ -95,6 +104,34 @@ export default function AppsPage() {
     setCreateLoading(true)
 
     try {
+      let uploadedLogoUrl: string | null = null
+
+      if (logoFile) {
+        const uploadFormData = new FormData()
+        uploadFormData.append('file', logoFile)
+        uploadFormData.append('slug', slug || normalizeSlug(name))
+
+        const uploadResponse = await fetch('/api/admin-applications/logo', {
+          method: 'POST',
+          body: uploadFormData,
+        })
+
+        const uploadPayload = (await uploadResponse.json().catch(() => null)) as
+          | { detail?: string; logoUrl?: string }
+          | null
+
+        if (!uploadResponse.ok || !uploadPayload?.logoUrl) {
+          setCreateError(
+            toUserFriendlyErrorMessage(
+              uploadPayload?.detail || 'We could not upload the logo right now.',
+            ),
+          )
+          return
+        }
+
+        uploadedLogoUrl = uploadPayload.logoUrl
+      }
+
       const response = await fetch('/api/admin-applications', {
         method: 'POST',
         headers: {
@@ -105,7 +142,7 @@ export default function AppsPage() {
           slug: slug || normalizeSlug(name),
           description,
           icon,
-          logoUrl,
+          logoUrl: uploadedLogoUrl,
           environment,
           baseUrl,
           apiKey,
@@ -128,7 +165,8 @@ export default function AppsPage() {
       setSlug('')
       setDescription('')
       setIcon('📦')
-      setLogoUrl('')
+      setLogoFile(null)
+      setLogoPreviewUrl(null)
       setEnvironment('production')
       setBaseUrl('')
       setApiKey('')
@@ -138,6 +176,14 @@ export default function AppsPage() {
     } finally {
       setCreateLoading(false)
     }
+  }
+
+  function handleLogoChange(file: File | null) {
+    setLogoFile(file)
+    if (logoPreviewUrl) {
+      URL.revokeObjectURL(logoPreviewUrl)
+    }
+    setLogoPreviewUrl(file ? URL.createObjectURL(file) : null)
   }
 
   return (
@@ -210,6 +256,7 @@ export default function AppsPage() {
               key={app.id}
               name={app.name}
               icon={app.icon || '📦'}
+              logoUrl={app.logo_url}
               status={
                 app.status === 'operational'
                   ? 'operational'
@@ -245,7 +292,13 @@ export default function AppsPage() {
                   <tr key={app.id} className="border-b border-border hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <span className="text-xl">{app.icon || '📦'}</span>
+                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                          {app.logo_url ? (
+                            <img src={app.logo_url} alt={`${app.name} logo`} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-xl">{app.icon || '📦'}</span>
+                          )}
+                        </div>
                         <div>
                           <p className="font-medium text-foreground">{app.name}</p>
                           <p className="text-xs text-muted-foreground">{app.environment}</p>
@@ -331,14 +384,19 @@ export default function AppsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="app-logo-url">Logo URL</Label>
+              <Label htmlFor="app-logo-file">Product Logo</Label>
               <Input
-                id="app-logo-url"
-                type="url"
-                value={logoUrl}
-                onChange={(event) => setLogoUrl(event.target.value)}
-                placeholder="https://..."
+                id="app-logo-file"
+                type="file"
+                accept="image/*"
+                onChange={(event) => handleLogoChange(event.target.files?.[0] || null)}
               />
+              {logoPreviewUrl && (
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3">
+                  <img src={logoPreviewUrl} alt="Selected product logo preview" className="h-12 w-12 rounded-lg object-cover" />
+                  <p className="text-sm text-muted-foreground">Logo ready to upload when you save the application.</p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
