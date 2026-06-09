@@ -9,6 +9,20 @@ import { toUserFriendlyErrorMessage } from '@/lib/user-friendly-errors'
 
 export const dynamic = 'force-dynamic'
 
+async function readErrorPayload(response: Response) {
+  const text = await response.text().catch(() => '')
+
+  if (!text) {
+    return null
+  }
+
+  try {
+    return JSON.parse(text) as Record<string, unknown>
+  } catch {
+    return { raw: text }
+  }
+}
+
 function toTitleCase(value: string) {
   return value
     .split(/[_\s-]+/)
@@ -47,8 +61,17 @@ export async function GET() {
   })
 
   if (!membershipsResponse.ok) {
+    const errorPayload = await readErrorPayload(membershipsResponse)
     return NextResponse.json(
-      { detail: 'We could not load your team information right now.' },
+      {
+        detail: 'We could not load your team information right now.',
+        debug: {
+          step: 'load-active-membership',
+          status: membershipsResponse.status,
+          authenticated_user_id: session.user.id,
+          response: errorPayload,
+        },
+      },
       { status: 502 },
     )
   }
@@ -82,8 +105,18 @@ export async function GET() {
   })
 
   if (!membersResponse.ok) {
+    const errorPayload = await readErrorPayload(membersResponse)
     return NextResponse.json(
-      { detail: 'We could not load the team members right now.' },
+      {
+        detail: 'We could not load the team members right now.',
+        debug: {
+          step: 'load-team-members',
+          status: membersResponse.status,
+          authenticated_user_id: session.user.id,
+          matched_organization_ids: organizationIds,
+          response: errorPayload,
+        },
+      },
       { status: 502 },
     )
   }
