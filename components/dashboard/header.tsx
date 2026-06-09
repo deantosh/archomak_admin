@@ -9,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SignOutButton } from '@/components/auth/sign-out-button';
-import { useAdminApp } from '@/components/dashboard/admin-app-provider';
 
 type DashboardHeaderProps = {
   user: {
@@ -20,7 +19,6 @@ type DashboardHeaderProps = {
 }
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
-  const { apps, error, loading, selectedAppKey, setSelectedAppKey } = useAdminApp()
   const initials = user.displayName
     .split(' ')
     .filter(Boolean)
@@ -40,28 +38,6 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
               placeholder="Search apps, users, logs..."
               className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
             />
-          </div>
-
-          <div className="min-w-[220px] rounded-xl border border-border bg-card px-3 py-2">
-            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Active Application
-            </p>
-            <select
-              value={selectedAppKey ?? ''}
-              onChange={(event) => setSelectedAppKey(event.target.value)}
-              disabled={loading || apps.length === 0}
-              className="w-full bg-transparent text-sm text-foreground outline-none"
-            >
-              {loading && <option value="">Loading applications…</option>}
-              {!loading && apps.length === 0 && (
-                <option value="">{error || 'No applications connected'}</option>
-              )}
-              {apps.map((app) => (
-                <option key={app.id} value={app.slug}>
-                  {app.name}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
 
