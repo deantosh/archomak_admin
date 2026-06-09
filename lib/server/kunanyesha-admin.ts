@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { cache } from 'react'
+
 import { getSupabaseAdminHeaders, getSupabaseRestUrl, hasSupabaseServiceRoleEnv } from '@/lib/supabase/admin'
 
 const baseUrl = process.env.KUNANYESHA_ADMIN_API_URL
@@ -39,6 +41,7 @@ type ProductRow = {
 
 type ProductSettingsRow = {
   product_id: string
+  admin_api_base_url?: string | null
   settings?: Record<string, unknown> | null
 }
 
@@ -56,18 +59,23 @@ export function normalizeAdminBaseUrl(value: string) {
   return normalized
 }
 
-function getConnectionSettings(settings: Record<string, unknown> | null | undefined) {
+function getConnectionSettings(
+  settings: Record<string, unknown> | null | undefined,
+  adminApiBaseUrl?: string | null,
+) {
   const connection =
     (settings?.connection as Record<string, unknown> | undefined) ||
     (settings?.admin_api as Record<string, unknown> | undefined) ||
     {}
 
   const baseUrl =
-    typeof connection.base_url === 'string'
-      ? connection.base_url
-      : typeof connection.baseUrl === 'string'
-        ? connection.baseUrl
-        : null
+    typeof adminApiBaseUrl === 'string' && adminApiBaseUrl.trim()
+      ? adminApiBaseUrl
+      : typeof connection.base_url === 'string'
+        ? connection.base_url
+        : typeof connection.baseUrl === 'string'
+          ? connection.baseUrl
+          : null
 
   const apiKey =
     typeof connection.api_key === 'string'
@@ -90,7 +98,7 @@ function getConnectionSettings(settings: Record<string, unknown> | null | undefi
   }
 }
 
-async function fetchDatabaseAdminSources(): Promise<AdminAppSource[]> {
+const fetchDatabaseAdminSources = cache(async (): Promise<AdminAppSource[]> => {
   if (!hasSupabaseServiceRoleEnv()) {
     return []
   }
@@ -115,7 +123,7 @@ async function fetchDatabaseAdminSources(): Promise<AdminAppSource[]> {
 
   const productIds = products.map((product) => product.id).filter(Boolean)
   const settingsResponse = await fetch(
-    `${getSupabaseRestUrl('product_settings')}?select=product_id,settings&product_id=in.(${productIds.join(',')})`,
+    `${getSupabaseRestUrl('product_settings')}?select=product_id,admin_api_base_url,settings&product_id=in.(${productIds.join(',')})`,
     {
       headers: getSupabaseAdminHeaders(),
       cache: 'no-store',
@@ -127,12 +135,12 @@ async function fetchDatabaseAdminSources(): Promise<AdminAppSource[]> {
   }
 
   const settingsRows = (await settingsResponse.json()) as ProductSettingsRow[]
-  const settingsByProductId = new Map(settingsRows.map((row) => [row.product_id, row.settings ?? {}]))
+  const settingsByProductId = new Map(settingsRows.map((row) => [row.product_id, row]))
 
   return products
     .map((product) => {
-      const settings = settingsByProductId.get(product.id) ?? {}
-      const connection = getConnectionSettings(settings)
+      const row = settingsByProductId.get(product.id)
+      const connection = getConnectionSettings(row?.settings, row?.admin_api_base_url)
 
       if (!product.slug || !product.name || !connection.baseUrl || !connection.apiKey || !connection.enabled) {
         return null
@@ -148,15 +156,9 @@ async function fetchDatabaseAdminSources(): Promise<AdminAppSource[]> {
       } satisfies AdminAppSource
     })
     .filter((item): item is AdminAppSource => Boolean(item))
-}
+})
 
-export async function getAdminAppSources(): Promise<AdminAppSource[]> {
-  const databaseSources = await fetchDatabaseAdminSources()
-
-  if (databaseSources.length > 0) {
-    return databaseSources
-  }
-
+const getEnvAdminAppSources = cache(async (): Promise<AdminAppSource[]> => {
   const configured = process.env.ADMIN_APP_SOURCES
 
   if (configured) {
@@ -186,6 +188,16 @@ export async function getAdminAppSources(): Promise<AdminAppSource[]> {
       icon: '🌧️',
     },
   ]
+})
+
+export async function getAdminAppSources(): Promise<AdminAppSource[]> {
+  const databaseSources = await fetchDatabaseAdminSources()
+
+  if (databaseSources.length > 0) {
+    return databaseSources
+  }
+
+  return getEnvAdminAppSources()
 }
 
 export async function fetchAdminSource<T>(

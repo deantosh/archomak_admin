@@ -38,7 +38,14 @@ function normalizeSlug(value: string) {
     .replace(/^-+|-+$/g, '')
 }
 
-function getConnectionSettings(settings: Record<string, unknown> | null | undefined) {
+function normalizeBaseUrl(value: string) {
+  return value.trim().replace(/\/+$/, '')
+}
+
+function getConnectionSettings(
+  settings: Record<string, unknown> | null | undefined,
+  adminApiBaseUrl?: string | null,
+) {
   const connection =
     (settings?.connection as Record<string, unknown> | undefined) ||
     (settings?.admin_api as Record<string, unknown> | undefined) ||
@@ -46,11 +53,13 @@ function getConnectionSettings(settings: Record<string, unknown> | null | undefi
 
   return {
     base_url:
-      typeof connection.base_url === 'string'
-        ? connection.base_url
-        : typeof connection.baseUrl === 'string'
-          ? connection.baseUrl
-          : null,
+      typeof adminApiBaseUrl === 'string' && adminApiBaseUrl.trim()
+        ? adminApiBaseUrl
+        : typeof connection.base_url === 'string'
+          ? connection.base_url
+          : typeof connection.baseUrl === 'string'
+            ? connection.baseUrl
+            : null,
     auth_type:
       typeof connection.auth_type === 'string'
         ? connection.auth_type
@@ -112,7 +121,7 @@ async function fetchApplications(): Promise<AdminApplicationsResponse> {
 
   const ids = products.map((product) => product.id)
   const settingsResponse = await fetch(
-    `${getSupabaseRestUrl('product_settings')}?select=product_id,settings&product_id=in.(${ids.join(',')})`,
+    `${getSupabaseRestUrl('product_settings')}?select=product_id,admin_api_base_url,settings&product_id=in.(${ids.join(',')})`,
     {
       headers: getSupabaseAdminHeaders(),
       cache: 'no-store',
@@ -124,11 +133,14 @@ async function fetchApplications(): Promise<AdminApplicationsResponse> {
   }
 
   const settingsRows = (await settingsResponse.json()) as ProductSettingsRow[]
-  const settingsById = new Map(settingsRows.map((row) => [row.product_id, row.settings ?? {}]))
+  const settingsById = new Map(settingsRows.map((row) => [row.product_id, row]))
 
   const items: AdminApplicationRecord[] = products.map((product) => {
-    const settings = settingsById.get(product.id) ?? {}
-    const connection = getConnectionSettings(settings)
+    const settingsRow = settingsById.get(product.id)
+    const connection = getConnectionSettings(
+      settingsRow?.settings,
+      settingsRow?.admin_api_base_url ?? null,
+    )
 
     return {
       id: product.id,
@@ -222,7 +234,7 @@ export async function POST(request: Request) {
   const icon = body?.icon?.trim() || '📦'
   const logoUrl = body?.logoUrl?.trim() || null
   const environment = body?.environment?.trim().toLowerCase() === 'staging' ? 'staging' : 'production'
-  const baseUrl = body?.baseUrl?.trim() || ''
+  const baseUrl = normalizeBaseUrl(body?.baseUrl?.trim() || '')
   const apiKey = body?.apiKey?.trim() || ''
 
   if (!name) {
@@ -315,7 +327,6 @@ export async function POST(request: Request) {
         admin_api_base_url: baseUrl,
         settings: {
           connection: {
-            base_url: baseUrl,
             auth_type: 'bearer',
             api_key: apiKey,
             enabled: true,
