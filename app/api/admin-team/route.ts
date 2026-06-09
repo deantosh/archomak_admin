@@ -267,6 +267,8 @@ export async function POST(request: Request) {
 
   const invitePayload = (await inviteResponse.json().catch(() => null)) as
     | {
+        id?: string
+        email?: string
         user?: {
           id?: string
           email?: string
@@ -276,7 +278,10 @@ export async function POST(request: Request) {
       }
     | null
 
-  if (!inviteResponse.ok || !invitePayload?.user?.id) {
+  const invitedUserId = invitePayload?.user?.id || invitePayload?.id
+  const invitedUserEmail = invitePayload?.user?.email || invitePayload?.email || email
+
+  if (!inviteResponse.ok || !invitedUserId) {
     return NextResponse.json(
       {
         detail: toUserFriendlyErrorMessage(
@@ -306,8 +311,8 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify([
         {
-          id: invitePayload.user.id,
-          email,
+          id: invitedUserId,
+          email: invitedUserEmail,
           full_name: fullName,
           status: 'active',
         },
@@ -323,8 +328,8 @@ export async function POST(request: Request) {
         debug: {
           step: 'upsert-profile',
           status: profileResponse.status,
-          invited_user_id: invitePayload.user.id,
-          invited_email: email,
+          invited_user_id: invitedUserId,
+          invited_email: invitedUserEmail,
           response: errorPayload,
         },
       },
@@ -343,7 +348,7 @@ export async function POST(request: Request) {
       body: JSON.stringify([
         {
           organization_id: membership.organization_id,
-          user_id: invitePayload.user.id,
+          user_id: invitedUserId,
           role: requestedRole,
           status: 'invited',
           invited_by: session.user.id,
@@ -360,7 +365,7 @@ export async function POST(request: Request) {
         debug: {
           step: 'upsert-team-membership',
           status: membershipUpsertResponse.status,
-          invited_user_id: invitePayload.user.id,
+          invited_user_id: invitedUserId,
           organization_id: membership.organization_id,
           response: errorPayload,
         },
@@ -371,6 +376,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     success: true,
-    detail: `Invitation sent to ${email}.`,
+    detail: `Invitation sent to ${invitedUserEmail}.`,
   })
 }
