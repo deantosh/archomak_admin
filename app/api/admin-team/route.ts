@@ -94,7 +94,7 @@ export async function GET() {
   const membersUrl = new URL(`${supabaseUrl}/rest/v1/organization_members`)
   membersUrl.searchParams.set(
     'select',
-    'id,user_id,organization_id,role,status,joined_at,created_at,updated_at,profiles(full_name,email,avatar_url),organizations(name)',
+    'id,user_id,organization_id,role,status,joined_at,created_at,updated_at,profiles!organization_members_user_id_fkey(full_name,email,avatar_url),organizations(name)',
   )
   membersUrl.searchParams.set('organization_id', `in.(${organizationIds.join(',')})`)
   membersUrl.searchParams.set('order', 'created_at.desc')
