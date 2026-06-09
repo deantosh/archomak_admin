@@ -2,11 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { AdminApplicationRecord, AdminApplicationsResponse } from '@/lib/admin-app-types'
 import { getDashboardAccess } from '@/lib/auth/access'
-import {
-  KunanyeshaAdminHealthResponse,
-  KunanyeshaAdminSummaryResponse,
-} from '@/lib/kunanyesha-admin-types'
-import { fetchAdminSource } from '@/lib/server/kunanyesha-admin'
+import { syncApplicationSnapshot } from '@/lib/server/admin-applications'
 import { getSupabaseAdminHeaders, getSupabaseRestUrl, hasSupabaseServiceRoleEnv } from '@/lib/supabase/admin'
 import { getAuthenticatedUser } from '@/lib/supabase/server'
 import { toUserFriendlyErrorMessage } from '@/lib/user-friendly-errors'
@@ -103,52 +99,6 @@ async function getCurrentOrganizationId(userId: string) {
 
   const memberships = (await membershipsResponse.json()) as Array<{ organization_id?: string | null }>
   return memberships[0]?.organization_id ?? null
-}
-
-async function syncApplicationSnapshot(params: {
-  productId: string
-  slug: string
-  name: string
-  baseUrl: string
-  apiKey: string
-}) {
-  const source = {
-    id: params.productId,
-    key: params.slug,
-    label: params.name,
-    baseUrl: params.baseUrl,
-    apiKey: params.apiKey,
-    icon: '📦',
-  }
-
-  const [summary, health] = await Promise.all([
-    fetchAdminSource<KunanyeshaAdminSummaryResponse>(source, 'summary'),
-    fetchAdminSource<KunanyeshaAdminHealthResponse>(source, 'health').catch(() => null),
-  ])
-
-  const productUpdateResponse = await fetch(`${getSupabaseRestUrl('products')}?id=eq.${params.productId}`, {
-    method: 'PATCH',
-    headers: {
-      ...getSupabaseAdminHeaders(),
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify({
-      status: health?.status === 'degraded' ? 'degraded' : summary.app.status || 'operational',
-      environment: summary.app.environment || 'production',
-      api_health: summary.app.api_health ?? null,
-      uptime: null,
-      active_users: summary.app.active_users ?? 0,
-      total_users: summary.users_total ?? summary.app.users ?? 0,
-      requests_per_day: summary.app.requests_per_day ?? 0,
-      monthly_revenue: summary.completed_payments_total ?? summary.app.revenue ?? 0,
-      last_deployment_at: summary.app.last_deployment ?? null,
-      updated_at: new Date().toISOString(),
-    }),
-  })
-
-  if (!productUpdateResponse.ok) {
-    throw new Error('The application was connected, but we could not save its live metrics yet.')
-  }
 }
 
 async function fetchApplications(): Promise<AdminApplicationsResponse> {

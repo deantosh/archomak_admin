@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 interface AppCardProps {
+  id: string;
   name: string;
   icon: string;
   logoUrl?: string | null;
@@ -20,6 +21,8 @@ interface AppCardProps {
   revenue: number;
   lastDeployment: string;
   activeUsers: number;
+  syncLoading?: boolean;
+  onSync?: (appId: string) => void;
 }
 
 const statusConfig = {
@@ -40,6 +43,7 @@ function getTimeAgo(timestamp: string) {
 }
 
 export function AppCard({
+  id,
   name,
   icon,
   logoUrl,
@@ -51,6 +55,8 @@ export function AppCard({
   revenue,
   lastDeployment,
   activeUsers,
+  syncLoading = false,
+  onSync,
 }: AppCardProps) {
   const statusConfig_ = statusConfig[status];
 
@@ -84,6 +90,9 @@ export function AppCard({
             <DropdownMenuItem>View Details</DropdownMenuItem>
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuItem>View Logs</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSync?.(id)} disabled={syncLoading}>
+              {syncLoading ? 'Syncing…' : 'Sync now'}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
