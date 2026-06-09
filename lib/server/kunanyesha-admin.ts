@@ -4,8 +4,6 @@ import { cache } from 'react'
 
 import { getSupabaseAdminHeaders, getSupabaseRestUrl, hasSupabaseServiceRoleEnv } from '@/lib/supabase/admin'
 
-const baseUrl = process.env.KUNANYESHA_ADMIN_API_URL
-const apiKey = process.env.KUNANYESHA_ADMIN_API_KEY
 const KNOWN_ADMIN_ENDPOINTS = [
   'summary',
   'health',
@@ -26,10 +24,6 @@ export interface AdminAppSource {
   baseUrl: string
   apiKey: string
   icon?: string
-}
-
-export function hasKunanyeshaAdminEnv() {
-  return Boolean(baseUrl && apiKey)
 }
 
 type ProductRow = {
@@ -158,46 +152,8 @@ const fetchDatabaseAdminSources = cache(async (): Promise<AdminAppSource[]> => {
     .filter((item): item is AdminAppSource => Boolean(item))
 })
 
-const getEnvAdminAppSources = cache(async (): Promise<AdminAppSource[]> => {
-  const configured = process.env.ADMIN_APP_SOURCES
-
-  if (configured) {
-    try {
-      const parsed = JSON.parse(configured) as AdminAppSource[]
-      return parsed
-        .filter((item) => item?.key && item?.label && item?.baseUrl && item?.apiKey)
-        .map((item) => ({
-          ...item,
-          baseUrl: normalizeAdminBaseUrl(item.baseUrl),
-        }))
-    } catch {
-      return []
-    }
-  }
-
-  if (!baseUrl || !apiKey) {
-    return []
-  }
-
-  return [
-    {
-      key: 'kunanyesha',
-      label: 'Kunanyesha',
-      baseUrl: normalizeAdminBaseUrl(baseUrl),
-      apiKey,
-      icon: '🌧️',
-    },
-  ]
-})
-
 export async function getAdminAppSources(): Promise<AdminAppSource[]> {
-  const databaseSources = await fetchDatabaseAdminSources()
-
-  if (databaseSources.length > 0) {
-    return databaseSources
-  }
-
-  return getEnvAdminAppSources()
+  return fetchDatabaseAdminSources()
 }
 
 export async function getAdminAppSourceByKey(appKey?: string | null) {
@@ -250,22 +206,4 @@ export async function fetchAdminSource<T>(
   }
 
   return payload as T
-}
-
-export async function fetchKunanyeshaAdmin(path: string, searchParams?: URLSearchParams) {
-  if (!baseUrl || !apiKey) {
-    throw new Error('The dashboard connection is incomplete.')
-  }
-
-  return fetchAdminSource(
-    {
-      key: 'kunanyesha',
-      label: 'Kunanyesha',
-      baseUrl: normalizeAdminBaseUrl(baseUrl),
-      apiKey,
-      icon: '🌧️',
-    },
-    path,
-    searchParams,
-  )
 }
