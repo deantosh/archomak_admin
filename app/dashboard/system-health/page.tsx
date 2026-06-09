@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { Activity, Server, Zap, Clock, AlertCircle } from 'lucide-react';
+import { useAdminApp } from '@/components/dashboard/admin-app-provider';
 import { Badge } from '@/components/ui/badge';
 import { ChartCard } from '@/components/dashboard/chart-card';
+import { buildAdminAppApiPath } from '@/lib/admin-app-selection';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { KunanyeshaAdminSummaryResponse, KunanyeshaAdminSystemHealthResponse } from '@/lib/kunanyesha-admin-types';
 
@@ -27,18 +29,21 @@ const services = [
 ];
 
 export default function SystemHealthPage() {
+  const { selectedApp, selectedAppKey } = useAdminApp()
   const [health, setHealth] = useState<KunanyeshaAdminSystemHealthResponse | null>(null)
   const [summary, setSummary] = useState<KunanyeshaAdminSummaryResponse | null>(null)
 
   useEffect(() => {
+    if (!selectedAppKey) return
+
     void Promise.all([
-      fetch('/api/kunanyesha-admin/system-health', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/summary', { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('system-health'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('summary'), { cache: 'no-store' }),
     ]).then(async ([healthRes, summaryRes]) => {
       if (healthRes.ok) setHealth((await healthRes.json()) as KunanyeshaAdminSystemHealthResponse)
       if (summaryRes.ok) setSummary((await summaryRes.json()) as KunanyeshaAdminSummaryResponse)
     })
-  }, [])
+  }, [selectedAppKey])
 
   const liveServices = health?.services || services
 
@@ -47,7 +52,9 @@ export default function SystemHealthPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl lg:text-4xl font-bold text-foreground">System Health</h1>
-        <p className="text-muted-foreground mt-1">Monitor infrastructure performance and availability</p>
+        <p className="text-muted-foreground mt-1">
+          Monitor infrastructure performance and availability for {selectedApp?.name || 'the selected application'}
+        </p>
       </div>
 
       {/* Status Summary */}

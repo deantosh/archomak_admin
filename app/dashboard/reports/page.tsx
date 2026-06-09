@@ -13,11 +13,13 @@ import {
 } from 'recharts'
 
 import { ChartCard } from '@/components/dashboard/chart-card'
+import { useAdminApp } from '@/components/dashboard/admin-app-provider'
 import { Button } from '@/components/ui/button'
+import { buildAdminAppApiPath } from '@/lib/admin-app-selection'
 import { KunanyeshaAdminReportsSummaryResponse } from '@/lib/kunanyesha-admin-types'
 
 const reportTypes = [
-  { title: 'Performance Summary', description: 'Operational totals from Kunanyesha', icon: '📊' },
+  { title: 'Performance Summary', description: 'Operational totals from the selected application', icon: '📊' },
   { title: 'User Coverage', description: 'Live platform usage and team footprint', icon: '👥' },
   { title: 'Payment Summary', description: 'Completed, pending, and failed payments', icon: '💳' },
   { title: 'Workflow Reports', description: 'Generated reports and processing status', icon: '🧾' },
@@ -33,15 +35,18 @@ function formatDate(dateString?: string | null) {
 }
 
 export default function ReportsPage() {
+  const { selectedApp, selectedAppKey } = useAdminApp()
   const [summary, setSummary] = useState<KunanyeshaAdminReportsSummaryResponse | null>(null)
 
   useEffect(() => {
-    void fetch('/api/kunanyesha-admin/reports/summary', { cache: 'no-store' })
+    if (!selectedAppKey) return
+
+    void fetch(buildAdminAppApiPath('reports/summary'), { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data: KunanyeshaAdminReportsSummaryResponse | null) => {
         setSummary(data)
       })
-  }, [])
+  }, [selectedAppKey])
 
   const chartData = useMemo(
     () =>
@@ -60,7 +65,9 @@ export default function ReportsPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Reports</h1>
-          <p className="text-muted-foreground mt-1">Live report generation visibility from Kunanyesha</p>
+          <p className="text-muted-foreground mt-1">
+            Live report generation visibility from {selectedApp?.name || 'the selected application'}
+          </p>
         </div>
         <Button>
           <Download size={18} className="mr-2" />
@@ -144,7 +151,10 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <ChartCard title="Report Status Breakdown" description="Live counts from Kunanyesha">
+      <ChartCard
+        title="Report Status Breakdown"
+        description={`Live counts from ${selectedApp?.name || 'the selected application'}`}
+      >
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />

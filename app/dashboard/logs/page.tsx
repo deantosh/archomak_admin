@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Filter } from 'lucide-react';
+import { useAdminApp } from '@/components/dashboard/admin-app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { buildAdminAppApiPath } from '@/lib/admin-app-selection';
 import { KunanyeshaAdminLogItem, KunanyeshaAdminLogsResponse } from '@/lib/kunanyesha-admin-types';
 
 function getStatusColor(status?: string | null) {
@@ -15,17 +17,20 @@ function getStatusColor(status?: string | null) {
 }
 
 export default function LogsPage() {
+  const { selectedApp, selectedAppKey } = useAdminApp()
   const [logs, setLogs] = useState<KunanyeshaAdminLogItem[]>([])
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
-    void fetch('/api/kunanyesha-admin/logs', { cache: 'no-store' })
+    if (!selectedAppKey) return
+
+    void fetch(buildAdminAppApiPath('logs'), { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data: KunanyeshaAdminLogsResponse | null) => {
         setLogs(data?.items || [])
       })
-  }, [])
+  }, [selectedAppKey])
 
   const filteredLogs = useMemo(
     () =>
@@ -56,7 +61,9 @@ export default function LogsPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl lg:text-4xl font-bold text-foreground">API Logs</h1>
-          <p className="text-muted-foreground mt-1">View and search API request logs</p>
+          <p className="text-muted-foreground mt-1">
+            View and search API request logs for {selectedApp?.name || 'the selected application'}
+          </p>
         </div>
       </div>
 

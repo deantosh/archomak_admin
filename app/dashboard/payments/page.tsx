@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Download } from 'lucide-react';
+import { useAdminApp } from '@/components/dashboard/admin-app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { buildAdminAppApiPath } from '@/lib/admin-app-selection';
 import {
   KunanyeshaAdminPaymentItem,
   KunanyeshaAdminPaymentsResponse,
@@ -11,14 +13,17 @@ import {
 } from '@/lib/kunanyesha-admin-types';
 
 export default function PaymentsPage() {
+  const { selectedApp, selectedAppKey } = useAdminApp()
   const [summary, setSummary] = useState<KunanyeshaAdminPaymentsSummaryResponse | null>(null)
   const [payments, setPayments] = useState<KunanyeshaAdminPaymentItem[]>([])
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
+    if (!selectedAppKey) return
+
     void Promise.all([
-      fetch('/api/kunanyesha-admin/payments/summary', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/payments', { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('payments/summary'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('payments'), { cache: 'no-store' }),
     ]).then(async ([summaryRes, paymentsRes]) => {
       if (summaryRes.ok) {
         setSummary((await summaryRes.json()) as KunanyeshaAdminPaymentsSummaryResponse)
@@ -28,7 +33,7 @@ export default function PaymentsPage() {
         setPayments(data.items)
       }
     })
-  }, [])
+  }, [selectedAppKey])
 
   const filteredPayments = useMemo(
     () =>
@@ -113,7 +118,7 @@ export default function PaymentsPage() {
                   <td className="px-6 py-4 text-sm font-medium text-foreground">
                     {payment.user_id || 'Unknown user'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">Kunanyesha</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{selectedApp?.name || '—'}</td>
                   <td className="px-6 py-4 text-sm font-semibold text-primary">${payment.amount.toLocaleString()}</td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">{payment.provider || '—'}</td>
                   <td className="px-6 py-4">

@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Save } from 'lucide-react'
 
+import { useAdminApp } from '@/components/dashboard/admin-app-provider'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { buildAdminAppApiPath } from '@/lib/admin-app-selection'
 import {
   KunanyeshaAdminNotificationsResponse,
   KunanyeshaAdminPaymentsSummaryResponse,
@@ -24,6 +26,7 @@ const settingTabs = [
 ]
 
 export default function SettingsPage() {
+  const { selectedApp, selectedAppKey } = useAdminApp()
   const [activeTab, setActiveTab] = useState<TabType>('general')
   const [summary, setSummary] = useState<KunanyeshaAdminSummaryResponse | null>(null)
   const [users, setUsers] = useState<KunanyeshaAdminUsersResponse['items']>([])
@@ -32,12 +35,14 @@ export default function SettingsPage() {
   const [paymentsSummary, setPaymentsSummary] = useState<KunanyeshaAdminPaymentsSummaryResponse | null>(null)
 
   useEffect(() => {
+    if (!selectedAppKey) return
+
     void Promise.all([
-      fetch('/api/kunanyesha-admin/summary', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/users', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/notifications', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/system-health', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/payments/summary', { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('summary'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('users'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('notifications'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('system-health'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('payments/summary'), { cache: 'no-store' }),
     ]).then(async ([summaryRes, usersRes, notificationsRes, healthRes, paymentsRes]) => {
       if (summaryRes.ok) setSummary((await summaryRes.json()) as KunanyeshaAdminSummaryResponse)
       if (usersRes.ok) setUsers(((await usersRes.json()) as KunanyeshaAdminUsersResponse).items)
@@ -47,7 +52,7 @@ export default function SettingsPage() {
       if (healthRes.ok) setSystemHealth((await healthRes.json()) as KunanyeshaAdminSystemHealthResponse)
       if (paymentsRes.ok) setPaymentsSummary((await paymentsRes.json()) as KunanyeshaAdminPaymentsSummaryResponse)
     })
-  }, [])
+  }, [selectedAppKey])
 
   const countyCount = useMemo(
     () => new Set(users.map((user) => user.county).filter(Boolean)).size,
@@ -61,7 +66,9 @@ export default function SettingsPage() {
     <div className="space-y-6 p-4 lg:p-8">
       <div>
         <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground mt-1">Live platform configuration overview from Kunanyesha</p>
+        <p className="text-muted-foreground mt-1">
+          Live platform configuration overview from {selectedApp?.name || 'the selected application'}
+        </p>
       </div>
 
       <div className="flex gap-2 border-b border-border overflow-x-auto">

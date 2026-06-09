@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, Database, Globe, Shield } from 'lucide-react'
 
+import { useAdminApp } from '@/components/dashboard/admin-app-provider'
 import { Button } from '@/components/ui/button'
+import { buildAdminAppApiPath } from '@/lib/admin-app-selection'
 import {
   KunanyeshaAdminHealthResponse,
   KunanyeshaAdminLogsResponse,
@@ -25,33 +27,38 @@ const upstreamEndpoints = [
 ]
 
 export default function DeveloperPage() {
+  const { selectedApp, selectedAppKey } = useAdminApp()
   const [summary, setSummary] = useState<KunanyeshaAdminSummaryResponse | null>(null)
   const [health, setHealth] = useState<KunanyeshaAdminHealthResponse | null>(null)
   const [systemHealth, setSystemHealth] = useState<KunanyeshaAdminSystemHealthResponse | null>(null)
   const [logs, setLogs] = useState<KunanyeshaAdminLogsResponse['items']>([])
 
   useEffect(() => {
+    if (!selectedAppKey) return
+
     void Promise.all([
-      fetch('/api/kunanyesha-admin/summary', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/health', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/system-health', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/logs', { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('summary'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('health'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('system-health'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('logs'), { cache: 'no-store' }),
     ]).then(async ([summaryRes, healthRes, systemHealthRes, logsRes]) => {
       if (summaryRes.ok) setSummary((await summaryRes.json()) as KunanyeshaAdminSummaryResponse)
       if (healthRes.ok) setHealth((await healthRes.json()) as KunanyeshaAdminHealthResponse)
       if (systemHealthRes.ok) setSystemHealth((await systemHealthRes.json()) as KunanyeshaAdminSystemHealthResponse)
       if (logsRes.ok) setLogs(((await logsRes.json()) as KunanyeshaAdminLogsResponse).items)
     })
-  }, [])
+  }, [selectedAppKey])
 
   const recentLogs = useMemo(() => logs.slice(0, 5), [logs])
 
   return (
     <div className="space-y-6 p-4 lg:p-8">
-      <div>
-        <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Developer</h1>
-        <p className="text-muted-foreground mt-1">Live integration, proxy, and upstream service visibility</p>
-      </div>
+        <div>
+          <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Developer</h1>
+          <p className="text-muted-foreground mt-1">
+            Live integration, proxy, and upstream service visibility for {selectedApp?.name || 'the selected application'}
+          </p>
+        </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-2xl p-6">
@@ -62,7 +69,9 @@ export default function DeveloperPage() {
         <div className="bg-card border border-border rounded-2xl p-6">
           <p className="text-sm font-medium text-muted-foreground mb-2">Daily Requests</p>
           <p className="text-3xl font-bold text-foreground">{summary?.app.requests_per_day ?? 0}</p>
-          <p className="text-xs text-muted-foreground mt-2">Reported by Kunanyesha summary endpoint</p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Reported by the selected application summary endpoint
+          </p>
         </div>
         <div className="bg-card border border-border rounded-2xl p-6">
           <p className="text-sm font-medium text-muted-foreground mb-2">Service Trust</p>
@@ -85,7 +94,7 @@ export default function DeveloperPage() {
                   <Globe size={18} className="text-primary" />
                   <div>
                     <h3 className="font-semibold text-foreground">GET {endpoint}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">Served through `/api/kunanyesha-admin`</p>
+                    <p className="text-xs text-muted-foreground mt-1">Served through `/api/admin-app/*`</p>
                   </div>
                 </div>
                 <span className="text-sm text-emerald-500 font-medium">Available</span>

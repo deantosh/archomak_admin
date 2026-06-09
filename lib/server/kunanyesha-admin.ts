@@ -200,6 +200,20 @@ export async function getAdminAppSources(): Promise<AdminAppSource[]> {
   return getEnvAdminAppSources()
 }
 
+export async function getAdminAppSourceByKey(appKey?: string | null) {
+  const sources = await getAdminAppSources()
+
+  if (!sources.length) {
+    return null
+  }
+
+  if (!appKey) {
+    return sources[0]
+  }
+
+  return sources.find((source) => source.key === appKey) ?? sources[0]
+}
+
 export async function fetchAdminSource<T>(
   source: AdminAppSource,
   path: string,

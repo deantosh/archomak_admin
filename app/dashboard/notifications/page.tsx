@@ -2,26 +2,33 @@
 
 import { useEffect, useState } from 'react';
 import { Trash2 } from 'lucide-react';
+import { useAdminApp } from '@/components/dashboard/admin-app-provider';
 import { Button } from '@/components/ui/button';
+import { buildAdminAppApiPath } from '@/lib/admin-app-selection';
 import { KunanyeshaAdminNotificationItem, KunanyeshaAdminNotificationsResponse } from '@/lib/kunanyesha-admin-types';
 
 export default function NotificationsPage() {
+  const { selectedApp, selectedAppKey } = useAdminApp()
   const [notifications, setNotifications] = useState<KunanyeshaAdminNotificationItem[]>([])
 
   useEffect(() => {
-    void fetch('/api/kunanyesha-admin/notifications', { cache: 'no-store' })
+    if (!selectedAppKey) return
+
+    void fetch(buildAdminAppApiPath('notifications'), { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data: KunanyeshaAdminNotificationsResponse | null) => {
         setNotifications(data?.items || [])
       })
-  }, [])
+  }, [selectedAppKey])
 
   return (
     <div className="space-y-6 p-4 lg:p-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Notifications</h1>
-          <p className="text-muted-foreground mt-1">Recent alerts and updates</p>
+          <p className="text-muted-foreground mt-1">
+            Recent alerts and updates for {selectedApp?.name || 'the selected application'}
+          </p>
         </div>
         <Button variant="outline">Mark All as Read</Button>
       </div>
