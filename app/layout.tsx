@@ -7,14 +7,21 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Archomak Admin Dashboard',
-  description: 'Enterprise control center for Archomak digital products',
+  title: "Archomak Admin Dashboard",
+  description: "Enterprise control center for Archomak digital products",
   icons: {
-    icon: '/archomak-logo.png',
-    shortcut: '/archomak-logo.png',
-    apple: '/archomak-logo.png',
+    icon: [
+      {
+        url: "/icon.png",
+        media: "(prefers-color-scheme: dark)",
+      },
+      {
+        url: "/icon_dark.png",
+        media: "(prefers-color-scheme: light)",
+      },
+    ],
   },
-}
+};
 
 export default function RootLayout({
   children,

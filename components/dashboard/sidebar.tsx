@@ -69,21 +69,27 @@ export function Sidebar() {
       <motion.aside
         initial={{ x: -256 }}
         animate={{ x: 0 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
         className={`fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border z-40
-          ${isOpen ? 'w-64' : 'w-20'}
-          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          ${isOpen ? "w-64" : "w-20"}
+          ${isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
         {/* Logo Area */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
-              <Image src="/icon.svg" alt="Archomak logo" width={24} height={24} />
-            </div>
-            <div className={`transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'} ${isOpen ? 'block' : 'hidden'}`}>
-              <p className="text-sm font-semibold text-white">Archomak</p>
-              <p className="text-[11px] text-sidebar-foreground/60">Admin Dashboard</p>
+          <div className="flex items-center overflow-hidden">
+            <div
+              className={`transition-opacity ${isOpen ? "opacity-100" : "opacity-0"} ${isOpen ? "block" : "hidden"}`}
+            >
+              <Image
+                src="/logo.svg"
+                alt="Archomak logo"
+                width={120}
+                height={120}
+              />
+              <p className="text-[11px] text-sidebar-foreground/60 text-center">
+                Admin Dashboard
+              </p>
             </div>
           </div>
           <button
@@ -106,20 +112,25 @@ export function Sidebar() {
                     href={item.href}
                     onClick={() => isMobileOpen && setIsMobileOpen(false)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group
-                      ${isActive
-                        ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent'
+                      ${
+                        isActive
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent"
                       }
                     `}
                   >
-                    <span className="flex-shrink-0">{item.icon}</span>
+                    <span className="shrink-0">{item.icon}</span>
                     {isOpen && (
                       <>
-                        <span className="flex-1 text-sm font-medium truncate">{item.name}</span>
+                        <span className="flex-1 text-sm font-medium truncate">
+                          {item.name}
+                        </span>
                         {item.badge && (
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full
-                            ${isActive ? 'bg-sidebar-primary-foreground text-sidebar-primary' : 'bg-sidebar-accent text-sidebar-foreground'}
-                          `}>
+                          <span
+                            className={`text-xs font-semibold px-2 py-0.5 rounded-full
+                            ${isActive ? "bg-sidebar-primary-foreground text-sidebar-primary" : "bg-sidebar-accent text-sidebar-foreground"}
+                          `}
+                          >
                             {item.badge}
                           </span>
                         )}
@@ -133,7 +144,9 @@ export function Sidebar() {
         </nav>
 
         {/* Footer Info */}
-        <div className={`border-t border-sidebar-border p-4 ${isOpen ? 'block' : 'hidden'}`}>
+        <div
+          className={`border-t border-sidebar-border p-4 ${isOpen ? "block" : "hidden"}`}
+        >
           <div className="text-xs text-sidebar-foreground/60 text-center">
             <p className="font-medium">Archomak</p>
             <p>Admin Dashboard</p>
@@ -150,7 +163,9 @@ export function Sidebar() {
       )}
 
       {/* Spacer for fixed sidebar */}
-      <div className={`transition-all duration-300 ${isOpen ? 'w-64' : 'w-20'} hidden lg:block`} />
+      <div
+        className={`transition-all duration-300 ${isOpen ? "w-64" : "w-20"} hidden lg:block`}
+      />
     </>
   );
 }
