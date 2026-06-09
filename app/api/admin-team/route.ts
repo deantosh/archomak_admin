@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { getDashboardAccess } from '@/lib/auth/access'
 import { AdminTeamMember } from '@/lib/admin-team-types'
-import { getSupabaseAdminHeaders, getSupabaseAuthAdminUrl, getSupabaseRestUrl, hasSupabaseServiceRoleEnv } from '@/lib/supabase/admin'
+import { getSupabaseAdminClient, getSupabaseAdminHeaders, getSupabaseRestUrl, hasSupabaseServiceRoleEnv } from '@/lib/supabase/admin'
 import { getSupabaseEnv } from '@/lib/supabase/config'
 import { getAuthenticatedUser } from '@/lib/supabase/server'
 import { toUserFriendlyErrorMessage } from '@/lib/user-friendly-errors'
@@ -250,51 +250,41 @@ export async function POST(request: Request) {
   }
 
   const redirectTo = `${new URL(request.url).origin}/accept-invite`
-  const inviteResponse = await fetch(getSupabaseAuthAdminUrl('/invite'), {
-    method: 'POST',
-    headers: getSupabaseAdminHeaders(),
-    body: JSON.stringify({
-      email,
+  const supabaseAdmin = getSupabaseAdminClient()
+  const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+    email,
+    {
+      redirectTo,
       data: {
         full_name: fullName,
         role: requestedRole,
         organization_id: membership.organization_id,
         organization_name: membership.organizations?.name ?? 'Archomak',
       },
-      redirectTo,
-    }),
-  })
+    },
+  )
 
-  const invitePayload = (await inviteResponse.json().catch(() => null)) as
-    | {
-        id?: string
-        email?: string
-        user?: {
-          id?: string
-          email?: string
-        }
-        msg?: string
-        error_description?: string
-      }
-    | null
+  const invitedUserId = inviteData?.user?.id
+  const invitedUserEmail = inviteData?.user?.email || email
 
-  const invitedUserId = invitePayload?.user?.id || invitePayload?.id
-  const invitedUserEmail = invitePayload?.user?.email || invitePayload?.email || email
-
-  if (!inviteResponse.ok || !invitedUserId) {
+  if (inviteError || !invitedUserId) {
     return NextResponse.json(
       {
         detail: toUserFriendlyErrorMessage(
-          invitePayload?.error_description ||
-            invitePayload?.msg ||
-            'We could not send the invitation right now.',
+          inviteError?.message || 'We could not send the invitation right now.',
         ),
         debug: {
           step: 'create-supabase-invite',
-          status: inviteResponse.status,
+          status: inviteError?.status ?? 500,
           invited_email: email,
           organization_id: membership.organization_id,
-          response: invitePayload,
+          response: inviteError
+            ? {
+                name: inviteError.name,
+                message: inviteError.message,
+                status: inviteError.status,
+              }
+            : inviteData,
         },
       },
       { status: 502 },
