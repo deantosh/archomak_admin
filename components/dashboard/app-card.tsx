@@ -65,10 +65,10 @@ export function AppCard({
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-muted">
+          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-border bg-white">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={`${name} logo`} className="h-full w-full object-cover" />
+              <img src={logoUrl} alt={`${name} logo`} className="max-h-8 max-w-8 object-contain" />
             ) : (
               <div className="text-3xl">{icon}</div>
             )}

@@ -339,9 +339,9 @@ export default function AppsPage() {
                   <tr key={app.id} className="border-b border-border hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-border bg-white">
                           {app.logo_url ? (
-                            <img src={app.logo_url} alt={`${app.name} logo`} className="h-full w-full object-cover" />
+                            <img src={app.logo_url} alt={`${app.name} logo`} className="max-h-7 max-w-7 object-contain" />
                           ) : (
                             <span className="text-xl">{app.icon || '📦'}</span>
                           )}
