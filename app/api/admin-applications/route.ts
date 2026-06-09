@@ -15,6 +15,7 @@ type ProductRow = Omit<AdminApplicationRecord, 'connection'> & {
 
 type ProductSettingsRow = {
   product_id: string
+  admin_api_base_url?: string | null
   settings?: Record<string, unknown> | null
 }
 
@@ -311,6 +312,7 @@ export async function POST(request: Request) {
     body: JSON.stringify([
       {
         product_id: product.id,
+        admin_api_base_url: baseUrl,
         settings: {
           connection: {
             base_url: baseUrl,
