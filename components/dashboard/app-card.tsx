@@ -23,6 +23,7 @@ interface AppCardProps {
   activeUsers: number;
   syncLoading?: boolean;
   onSync?: (appId: string) => void;
+  onEdit?: (appId: string) => void;
 }
 
 const statusConfig = {
@@ -57,6 +58,7 @@ export function AppCard({
   activeUsers,
   syncLoading = false,
   onSync,
+  onEdit,
 }: AppCardProps) {
   const statusConfig_ = statusConfig[status];
 
@@ -87,9 +89,9 @@ export function AppCard({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>View Details</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem>View Logs</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEdit?.(id)}>
+              Edit
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onSync?.(id)} disabled={syncLoading}>
               {syncLoading ? 'Syncing…' : 'Sync now'}
             </DropdownMenuItem>

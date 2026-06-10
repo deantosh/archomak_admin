@@ -29,9 +29,12 @@ export default function AppsPage() {
   const [syncingAppId, setSyncingAppId] = useState<string | null>(null)
 
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [createLoading, setCreateLoading] = useState(false)
+  const [editLoading, setEditLoading] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [createSuccess, setCreateSuccess] = useState<string | null>(null)
+  const [editingAppId, setEditingAppId] = useState<string | null>(null)
 
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
@@ -42,6 +45,8 @@ export default function AppsPage() {
   const [environment, setEnvironment] = useState('production')
   const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
+  const [editBaseUrl, setEditBaseUrl] = useState('')
+  const [editApiKey, setEditApiKey] = useState('')
 
   async function loadApplications() {
     setLoadError(null)
@@ -217,6 +222,60 @@ export default function AppsPage() {
     }
   }
 
+  function handleOpenEditDialog(app: AdminApplicationRecord) {
+    setCreateError(null)
+    setCreateSuccess(null)
+    setEditingAppId(app.id)
+    setEditBaseUrl(app.connection.base_url || '')
+    setEditApiKey(app.connection.api_key || '')
+    setEditDialogOpen(true)
+  }
+
+  async function handleUpdateApplication(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!editingAppId) {
+      return
+    }
+
+    setCreateError(null)
+    setCreateSuccess(null)
+    setEditLoading(true)
+
+    try {
+      const response = await fetch(`/api/admin-applications/${editingAppId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          baseUrl: editBaseUrl,
+          apiKey: editApiKey,
+        }),
+      })
+
+      const payload = (await response.json().catch(() => null)) as
+        | { detail?: string }
+        | null
+
+      if (!response.ok) {
+        setCreateError(
+          toUserFriendlyErrorMessage(payload?.detail || 'We could not update this application right now.'),
+        )
+        return
+      }
+
+      setCreateSuccess(payload?.detail || 'Application connection updated successfully.')
+      setEditDialogOpen(false)
+      setEditingAppId(null)
+      await loadApplications()
+    } catch {
+      setCreateError('We could not update this application right now. Please try again shortly.')
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6 p-4 lg:p-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -317,6 +376,7 @@ export default function AppsPage() {
               activeUsers={app.active_users}
               syncLoading={syncingAppId === app.id}
               onSync={handleSyncApplication}
+              onEdit={() => handleOpenEditDialog(app)}
             />
           ))}
         </div>
@@ -369,14 +429,23 @@ export default function AppsPage() {
                     <td className="px-6 py-4 text-sm text-foreground">{app.api_health ?? 0}%</td>
                     <td className="px-6 py-4 text-sm font-semibold text-primary">${app.monthly_revenue.toLocaleString()}</td>
                     <td className="px-6 py-4 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSyncApplication(app.id)}
-                        disabled={syncingAppId === app.id}
-                      >
-                        {syncingAppId === app.id ? 'Syncing…' : 'Sync now'}
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenEditDialog(app)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSyncApplication(app.id)}
+                          disabled={syncingAppId === app.id}
+                        >
+                          {syncingAppId === app.id ? 'Syncing…' : 'Sync now'}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -512,6 +581,80 @@ export default function AppsPage() {
                   </>
                 ) : (
                   'Save Application'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          setEditDialogOpen(open)
+          if (!open) {
+            setEditingAppId(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Edit Application Connection</DialogTitle>
+            <DialogDescription>
+              Update the saved admin API base URL or API key if the original connection details were wrong.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form className="space-y-4" onSubmit={handleUpdateApplication}>
+            <div className="space-y-2">
+              <Label htmlFor="edit-app-base-url">Admin API Base URL</Label>
+              <Input
+                id="edit-app-base-url"
+                type="url"
+                value={editBaseUrl}
+                onChange={(event) => setEditBaseUrl(event.target.value)}
+                placeholder="https://your-app.up.railway.app/api/v1/admin"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-app-api-key">API Key</Label>
+              <Input
+                id="edit-app-api-key"
+                type="password"
+                value={editApiKey}
+                onChange={(event) => setEditApiKey(event.target.value)}
+                placeholder="Service key or shared admin token"
+                required
+              />
+            </div>
+
+            {createError && (
+              <div className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-500">
+                {createError}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setEditDialogOpen(false)
+                  setEditingAppId(null)
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={editLoading}>
+                {editLoading ? (
+                  <>
+                    <LoaderCircle className="mr-2 size-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  'Save Changes'
                 )}
               </Button>
             </DialogFooter>

@@ -78,6 +78,11 @@ export function LoginForm() {
       return
     }
 
+    if (hashInvitationType === 'email_change' || hashInvitationType === 'signup' || hashInvitationType === 'magiclink') {
+      router.replace(`/dashboard/settings?verification=confirmed`)
+      return
+    }
+
     if (
       recoveryType === 'recovery' ||
       (accessToken && refreshToken) ||
@@ -176,6 +181,10 @@ export function LoginForm() {
           <CardDescription className="text-sm leading-6 text-slate-300">
             Sign in with your Archomak staff account to access internal operations.
           </CardDescription>
+          <p className="text-xs leading-5 text-slate-400">
+            Demo previews on the site stay clearly labeled. Official report generation is only
+            available after work-email verification.
+          </p>
         </div>
       </CardHeader>
       <CardContent>

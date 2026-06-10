@@ -10,7 +10,19 @@ export default function AuthCallbackPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const destination = `/reset-password${window.location.search}${window.location.hash}`
+    const hashParams = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash)
+    const type = hashParams.get('type')
+
+    let destination = '/dashboard'
+
+    if (type === 'recovery') {
+      destination = `/reset-password${window.location.search}${window.location.hash}`
+    } else if (type === 'invite') {
+      destination = `/accept-invite${window.location.search}${window.location.hash}`
+    } else if (type === 'email_change' || type === 'signup' || type === 'magiclink') {
+      destination = '/dashboard/settings?verification=confirmed'
+    }
+
     router.replace(destination)
   }, [router])
 

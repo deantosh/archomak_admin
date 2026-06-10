@@ -1,12 +1,16 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Save } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 import { useAdminApp } from '@/components/dashboard/admin-app-provider'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { buildAdminAppApiPath } from '@/lib/admin-app-selection'
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { isAllowedOfficialEmail } from '@/lib/official-verification'
 import {
   KunanyeshaAdminNotificationsResponse,
   KunanyeshaAdminPaymentsSummaryResponse,
@@ -14,6 +18,7 @@ import {
   KunanyeshaAdminSystemHealthResponse,
   KunanyeshaAdminUsersResponse,
 } from '@/lib/kunanyesha-admin-types'
+import { toUserFriendlyErrorMessage } from '@/lib/user-friendly-errors'
 
 type TabType = 'general' | 'security' | 'integrations' | 'notifications' | 'billing'
 
@@ -27,23 +32,70 @@ const settingTabs = [
 
 export default function SettingsPage() {
   const { selectedApp, selectedAppKey } = useAdminApp()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabType>('general')
   const [summary, setSummary] = useState<KunanyeshaAdminSummaryResponse | null>(null)
   const [users, setUsers] = useState<KunanyeshaAdminUsersResponse['items']>([])
   const [notifications, setNotifications] = useState<KunanyeshaAdminNotificationsResponse['items']>([])
   const [systemHealth, setSystemHealth] = useState<KunanyeshaAdminSystemHealthResponse | null>(null)
   const [paymentsSummary, setPaymentsSummary] = useState<KunanyeshaAdminPaymentsSummaryResponse | null>(null)
+  const [verificationStatus, setVerificationStatus] = useState<{
+    signoff_email?: string | null
+    official_verification_status?: string | null
+    official_email_verified_at?: string | null
+    report_access_enabled?: boolean | null
+  } | null>(null)
+  const [verificationEmail, setVerificationEmail] = useState('')
+  const [verificationLoading, setVerificationLoading] = useState(false)
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null)
+  const [verificationError, setVerificationError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const verificationParam = searchParams.get('verification')
+
+    if (verificationParam === 'confirmed') {
+      void fetch('/api/profile-verification/confirm', {
+        method: 'POST',
+      })
+        .then(async (response) => {
+          const payload = (await response.json().catch(() => null)) as { detail?: string } | null
+
+          if (!response.ok) {
+            throw new Error(payload?.detail || 'We could not finish verification right now.')
+          }
+
+          setVerificationMessage(payload?.detail || 'Your work email is verified.')
+          router.replace('/dashboard/settings')
+        })
+        .catch((error) => {
+          setVerificationError(
+            error instanceof Error ? error.message : 'We could not finish verification right now.',
+          )
+        })
+    }
+  }, [router, searchParams])
 
   useEffect(() => {
     if (!selectedAppKey) return
 
-    void Promise.all([
+    void (async () => {
+      const [
+        summaryRes,
+        usersRes,
+        notificationsRes,
+        healthRes,
+        paymentsRes,
+        verificationRes,
+      ] = await Promise.all([
       fetch(buildAdminAppApiPath('summary'), { cache: 'no-store' }),
       fetch(buildAdminAppApiPath('users'), { cache: 'no-store' }),
       fetch(buildAdminAppApiPath('notifications'), { cache: 'no-store' }),
       fetch(buildAdminAppApiPath('system-health'), { cache: 'no-store' }),
       fetch(buildAdminAppApiPath('payments/summary'), { cache: 'no-store' }),
-    ]).then(async ([summaryRes, usersRes, notificationsRes, healthRes, paymentsRes]) => {
+      fetch('/api/profile-verification', { cache: 'no-store' }),
+      ])
+
       if (summaryRes.ok) setSummary((await summaryRes.json()) as KunanyeshaAdminSummaryResponse)
       if (usersRes.ok) setUsers(((await usersRes.json()) as KunanyeshaAdminUsersResponse).items)
       if (notificationsRes.ok) {
@@ -51,8 +103,90 @@ export default function SettingsPage() {
       }
       if (healthRes.ok) setSystemHealth((await healthRes.json()) as KunanyeshaAdminSystemHealthResponse)
       if (paymentsRes.ok) setPaymentsSummary((await paymentsRes.json()) as KunanyeshaAdminPaymentsSummaryResponse)
-    })
+      if (verificationRes?.ok) {
+        const payload = (await verificationRes.json().catch(() => null)) as
+          | {
+              profile?: {
+                signoff_email?: string | null
+                official_verification_status?: string | null
+                official_email_verified_at?: string | null
+                report_access_enabled?: boolean | null
+              }
+            }
+          | null
+
+        setVerificationStatus(payload?.profile ?? null)
+        setVerificationEmail(payload?.profile?.signoff_email ?? '')
+      }
+    })()
   }, [selectedAppKey])
+
+  async function handleVerificationSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setVerificationError(null)
+    setVerificationMessage(null)
+    setVerificationLoading(true)
+
+    try {
+      if (!verificationEmail || !verificationEmail.includes('@')) {
+        setVerificationError('Enter a valid work email address.')
+        return
+      }
+
+      if (!isAllowedOfficialEmail(verificationEmail)) {
+        setVerificationError('Use a work email from an approved organization domain.')
+        return
+      }
+
+      const supabase = getSupabaseBrowserClient()
+      const { error } = await supabase.auth.updateUser({
+        email: verificationEmail,
+        data: {
+          signoff_email: verificationEmail,
+        },
+      })
+
+      if (error) {
+        setVerificationError(
+          toUserFriendlyErrorMessage(
+            error.message || 'We could not send the verification email right now.',
+          ),
+        )
+        return
+      }
+
+      const response = await fetch('/api/profile-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ workEmail: verificationEmail }),
+      })
+
+      const payload = (await response.json().catch(() => null)) as { detail?: string } | null
+
+      if (!response.ok) {
+        setVerificationError(
+          toUserFriendlyErrorMessage(
+            payload?.detail || 'We could not send the verification email right now.',
+          ),
+        )
+        return
+      }
+
+      setVerificationStatus({
+        signoff_email: verificationEmail,
+        official_verification_status: 'pending',
+        official_email_verified_at: null,
+        report_access_enabled: false,
+      })
+      setVerificationMessage(payload?.detail || 'Check your work inbox to confirm the email address.')
+    } catch {
+      setVerificationError('We could not send the verification email right now.')
+    } finally {
+      setVerificationLoading(false)
+    }
+  }
 
   const countyCount = useMemo(
     () => new Set(users.map((user) => user.county).filter(Boolean)).size,
@@ -152,6 +286,63 @@ export default function SettingsPage() {
                 <span className="text-muted-foreground">Open critical alerts</span>
                 <span className="font-semibold text-foreground">{criticalCount}</span>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-4">Official Report Access</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Verification status</p>
+                  <p className="text-xs text-muted-foreground">
+                    Only verified work emails can unlock official report generation.
+                  </p>
+                </div>
+                <Badge
+                  className={
+                    verificationStatus?.official_verification_status === 'verified'
+                      ? 'bg-emerald-500/10 text-emerald-500 capitalize'
+                      : verificationStatus?.official_verification_status === 'pending'
+                        ? 'bg-amber-500/10 text-amber-500 capitalize'
+                        : 'bg-muted text-muted-foreground capitalize'
+                  }
+                >
+                  {verificationStatus?.official_verification_status || 'unverified'}
+                </Badge>
+              </div>
+
+              {(verificationMessage || verificationError) && (
+                <div
+                  className={`rounded-xl border px-4 py-3 text-sm ${
+                    verificationError
+                      ? 'border-red-500/20 bg-red-500/10 text-red-300'
+                      : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                  }`}
+                >
+                  {verificationError || verificationMessage}
+                </div>
+              )}
+
+              <form className="space-y-4" onSubmit={handleVerificationSubmit}>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Work Email</label>
+                  <Input
+                    type="email"
+                    value={verificationEmail}
+                    onChange={(event) => setVerificationEmail(event.target.value)}
+                    placeholder="name@agency.go.ke"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Use your official work address. The app will send a confirmation email to that
+                  mailbox and unlock report generation after verification.
+                </p>
+                <Button type="submit" disabled={verificationLoading}>
+                  <Save size={16} className="mr-2" />
+                  {verificationLoading ? 'Sending Verification…' : 'Verify Work Email'}
+                </Button>
+              </form>
             </div>
           </div>
         </div>
