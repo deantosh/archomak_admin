@@ -127,3 +127,5 @@ export interface KunanyeshaAdminSystemHealthResponse {
   services: KunanyeshaAdminSystemHealthServiceItem[]
   uptime_hint?: string | null
 }
+
+export type KunanyeshaAdminHealthResponse = KunanyeshaAdminSystemHealthResponse

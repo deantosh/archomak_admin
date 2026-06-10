@@ -131,25 +131,27 @@ const fetchDatabaseAdminSources = cache(async (): Promise<AdminAppSource[]> => {
   const settingsRows = (await settingsResponse.json()) as ProductSettingsRow[]
   const settingsByProductId = new Map(settingsRows.map((row) => [row.product_id, row]))
 
-  return products
-    .map((product) => {
-      const row = settingsByProductId.get(product.id)
-      const connection = getConnectionSettings(row?.settings, row?.admin_api_base_url)
+  const sources: AdminAppSource[] = []
 
-      if (!product.slug || !product.name || !connection.baseUrl || !connection.apiKey || !connection.enabled) {
-        return null
-      }
+  for (const product of products) {
+    const row = settingsByProductId.get(product.id)
+    const connection = getConnectionSettings(row?.settings, row?.admin_api_base_url)
 
-      return {
-        id: product.id,
-        key: product.slug,
-        label: product.name,
-        baseUrl: normalizeAdminBaseUrl(connection.baseUrl),
-        apiKey: connection.apiKey,
-        icon: product.icon ?? '📦',
-      } satisfies AdminAppSource
+    if (!product.slug || !product.name || !connection.baseUrl || !connection.apiKey || !connection.enabled) {
+      continue
+    }
+
+    sources.push({
+      id: product.id,
+      key: product.slug,
+      label: product.name,
+      baseUrl: normalizeAdminBaseUrl(connection.baseUrl),
+      apiKey: connection.apiKey,
+      icon: product.icon ?? '📦',
     })
-    .filter((item): item is AdminAppSource => Boolean(item))
+  }
+
+  return sources
 })
 
 export async function getAdminAppSources(): Promise<AdminAppSource[]> {

@@ -7,7 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { ChartCard } from '@/components/dashboard/chart-card';
 import { buildAdminAppApiPath } from '@/lib/admin-app-selection';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { KunanyeshaAdminSummaryResponse, KunanyeshaAdminSystemHealthResponse } from '@/lib/kunanyesha-admin-types';
+import {
+  KunanyeshaAdminSummaryResponse,
+  KunanyeshaAdminSystemHealthResponse,
+  KunanyeshaAdminSystemHealthServiceItem,
+} from '@/lib/kunanyesha-admin-types';
 
 const systemData = [
   { time: '00:00', cpu: 45, memory: 62, requests: 1200 },
@@ -19,13 +23,13 @@ const systemData = [
   { time: '23:59', cpu: 48, memory: 60, requests: 1400 },
 ];
 
-const services = [
-  { name: 'API Gateway', status: 'operational', uptime: 99.99, lastCheck: '5m ago' },
-  { name: 'Database Primary', status: 'operational', uptime: 99.98, lastCheck: '2m ago' },
-  { name: 'Cache Layer', status: 'operational', uptime: 99.95, lastCheck: '1m ago' },
-  { name: 'Search Index', status: 'operational', uptime: 99.92, lastCheck: '3m ago' },
-  { name: 'Message Queue', status: 'warning', uptime: 98.5, lastCheck: '1m ago' },
-  { name: 'CDN', status: 'operational', uptime: 100.0, lastCheck: 'just now' },
+const services: KunanyeshaAdminSystemHealthServiceItem[] = [
+  { name: 'API Gateway', status: 'operational', detail: '99.99% uptime · checked 5m ago' },
+  { name: 'Database Primary', status: 'operational', detail: '99.98% uptime · checked 2m ago' },
+  { name: 'Cache Layer', status: 'operational', detail: '99.95% uptime · checked 1m ago' },
+  { name: 'Search Index', status: 'operational', detail: '99.92% uptime · checked 3m ago' },
+  { name: 'Message Queue', status: 'warning', detail: '98.5% uptime · checked 1m ago' },
+  { name: 'CDN', status: 'operational', detail: '100.0% uptime · checked just now' },
 ];
 
 export default function SystemHealthPage() {

@@ -6,21 +6,26 @@ import {
   KunanyeshaAdminHealthResponse,
   KunanyeshaAdminSummaryResponse,
 } from '@/lib/kunanyesha-admin-types'
-import { fetchAdminSource, getAdminAppSources } from '@/lib/server/kunanyesha-admin'
+import { fetchAdminSource, getAdminAppSourceByKey, getAdminAppSources } from '@/lib/server/kunanyesha-admin'
 
-export async function fetchPortfolioOverview(): Promise<PortfolioOverviewResponse> {
-  const sources = await getAdminAppSources()
+export async function fetchPortfolioOverview(appKey?: string | null): Promise<PortfolioOverviewResponse> {
+  const sources = appKey
+    ? (() => getAdminAppSourceByKey(appKey).then((source) => (source ? [source] : [])))()
+    : getAdminAppSources()
+  const resolvedSources = await sources
 
-  if (sources.length === 0) {
+  if (resolvedSources.length === 0) {
     throw new Error('No application connections are configured yet.')
   }
 
   const sourcePayloads = await Promise.allSettled(
-    sources.map(async (source) => {
+    resolvedSources.map(async (source) => {
       const [summary, health, activity] = await Promise.all([
         fetchAdminSource<KunanyeshaAdminSummaryResponse>(source, 'summary'),
         fetchAdminSource<KunanyeshaAdminHealthResponse>(source, 'health').catch(() => null),
-        fetchAdminSource<KunanyeshaAdminActivityResponse>(source, 'activity').catch(() => ({ items: [] })),
+        fetchAdminSource<KunanyeshaAdminActivityResponse>(source, 'activity').catch(
+          (): KunanyeshaAdminActivityResponse => ({ items: [] }),
+        ),
       ])
 
       const appSummary: PortfolioAppSummary = {
