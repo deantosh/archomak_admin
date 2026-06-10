@@ -57,14 +57,6 @@ export function toUserFriendlyErrorMessage(message?: string | null) {
     return 'This invitation is no longer valid. Please request a new one.'
   }
 
-  if (normalized.includes('official verification')) {
-    return 'Official report access is not fully configured yet. Please contact an administrator.'
-  }
-
-  if (normalized.includes('work email address')) {
-    return 'Enter a valid work email address from an approved organization domain.'
-  }
-
   if (normalized.includes('invalid or has expired')) {
     return 'This link is invalid or has expired. Please request a new one.'
   }

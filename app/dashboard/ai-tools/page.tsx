@@ -13,7 +13,6 @@ import {
   KunanyeshaAdminSummaryResponse,
   KunanyeshaAdminSystemHealthResponse,
 } from '@/lib/kunanyesha-admin-types'
-import { OfficialVerificationStatus } from '@/lib/official-verification'
 
 export default function AIToolsPage() {
   const { selectedApp, selectedAppKey } = useAdminApp()
@@ -22,31 +21,17 @@ export default function AIToolsPage() {
   const [notifications, setNotifications] = useState<KunanyeshaAdminNotificationsResponse['items']>([])
   const [logs, setLogs] = useState<KunanyeshaAdminLogsResponse['items']>([])
   const [health, setHealth] = useState<KunanyeshaAdminSystemHealthResponse | null>(null)
-  const [verificationStatus, setVerificationStatus] = useState<{
-    official_verification_status?: OfficialVerificationStatus | null
-    report_access_enabled?: boolean | null
-  } | null>(null)
 
   useEffect(() => {
     if (!selectedAppKey) return
 
-    void (async () => {
-      const [
-        summaryRes,
-        reportsRes,
-        notificationsRes,
-        logsRes,
-        healthRes,
-        verificationRes,
-      ] = await Promise.all([
+    void Promise.all([
       fetch(buildAdminAppApiPath('summary'), { cache: 'no-store' }),
       fetch(buildAdminAppApiPath('reports/summary'), { cache: 'no-store' }),
       fetch(buildAdminAppApiPath('notifications'), { cache: 'no-store' }),
       fetch(buildAdminAppApiPath('logs'), { cache: 'no-store' }),
       fetch(buildAdminAppApiPath('system-health'), { cache: 'no-store' }),
-      fetch('/api/profile-verification', { cache: 'no-store' }),
-      ])
-
+    ]).then(async ([summaryRes, reportsRes, notificationsRes, logsRes, healthRes]) => {
       if (summaryRes.ok) setSummary((await summaryRes.json()) as KunanyeshaAdminSummaryResponse)
       if (reportsRes.ok) setReports((await reportsRes.json()) as KunanyeshaAdminReportsSummaryResponse)
       if (notificationsRes.ok) {
@@ -54,18 +39,7 @@ export default function AIToolsPage() {
       }
       if (logsRes.ok) setLogs(((await logsRes.json()) as KunanyeshaAdminLogsResponse).items)
       if (healthRes.ok) setHealth((await healthRes.json()) as KunanyeshaAdminSystemHealthResponse)
-      if (verificationRes?.ok) {
-        const payload = (await verificationRes.json().catch(() => null)) as
-          | {
-              profile?: {
-                official_verification_status?: OfficialVerificationStatus | null
-                report_access_enabled?: boolean | null
-              }
-            }
-          | null
-        setVerificationStatus(payload?.profile ?? null)
-      }
-    })()
+    })
   }, [selectedAppKey])
 
   const chartData = useMemo(
@@ -110,12 +84,6 @@ export default function AIToolsPage() {
           <p className="text-xs text-muted-foreground mt-2">Derived from live API health</p>
         </div>
       </div>
-
-      {!verificationStatus?.report_access_enabled && (
-        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">
-          Official report generation is locked until your work email is verified in Settings.
-        </div>
-      )}
 
       <ChartCard title="Automation Load" description="Live operational indicators">
         <ResponsiveContainer width="100%" height={300}>

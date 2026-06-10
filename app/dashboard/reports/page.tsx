@@ -17,7 +17,6 @@ import { useAdminApp } from '@/components/dashboard/admin-app-provider'
 import { Button } from '@/components/ui/button'
 import { buildAdminAppApiPath } from '@/lib/admin-app-selection'
 import { KunanyeshaAdminReportsSummaryResponse } from '@/lib/kunanyesha-admin-types'
-import { OfficialVerificationStatus } from '@/lib/official-verification'
 
 const reportTypes = [
   { title: 'Performance Summary', description: 'Operational totals from the selected application', icon: '📊' },
@@ -38,11 +37,6 @@ function formatDate(dateString?: string | null) {
 export default function ReportsPage() {
   const { selectedApp, selectedAppKey } = useAdminApp()
   const [summary, setSummary] = useState<KunanyeshaAdminReportsSummaryResponse | null>(null)
-  const [verificationStatus, setVerificationStatus] = useState<{
-    official_verification_status?: OfficialVerificationStatus | null
-    report_access_enabled?: boolean | null
-    signoff_email?: string | null
-  } | null>(null)
 
   useEffect(() => {
     if (!selectedAppKey) return
@@ -52,15 +46,7 @@ export default function ReportsPage() {
       .then((data: KunanyeshaAdminReportsSummaryResponse | null) => {
         setSummary(data)
       })
-
-    void fetch('/api/profile-verification', { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        setVerificationStatus(data?.profile ?? null)
-      })
   }, [selectedAppKey])
-
-  const canGenerateReports = Boolean(verificationStatus?.report_access_enabled)
 
   const chartData = useMemo(
     () =>
@@ -83,17 +69,11 @@ export default function ReportsPage() {
             Live report generation visibility from {selectedApp?.name || 'the selected application'}
           </p>
         </div>
-        <Button disabled={!canGenerateReports}>
+        <Button>
           <Download size={18} className="mr-2" />
-          {canGenerateReports ? 'Export Summary' : 'Verification Required'}
+          Export Summary
         </Button>
       </div>
-
-      {!canGenerateReports && (
-        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">
-          Official report generation is locked until your work email is verified in Settings.
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-2xl p-6">
@@ -124,8 +104,8 @@ export default function ReportsPage() {
               <div className="text-3xl mb-3">{report.icon}</div>
               <h3 className="font-semibold text-foreground mb-1">{report.title}</h3>
               <p className="text-sm text-muted-foreground mb-4">{report.description}</p>
-              <Button variant="outline" size="sm" className="w-full" disabled={!canGenerateReports}>
-                {canGenerateReports ? 'Generate' : 'Verification Required'}
+              <Button variant="outline" size="sm" className="w-full">
+                Generate
               </Button>
             </div>
           ))}
