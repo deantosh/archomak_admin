@@ -20,7 +20,7 @@ export default function NotificationsPage() {
     <div className="space-y-6 p-4 lg:p-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Notifications</h1>
+          <h1 className="page-title">Notifications</h1>
           <p className="text-muted-foreground mt-1">Recent alerts and updates</p>
         </div>
         <Button variant="outline">Mark All as Read</Button>
