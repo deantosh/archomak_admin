@@ -22,23 +22,24 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { clearSessionCookies, fetchUser, signInWithPassword } from '@/lib/supabase/client'
+import {
+  clearSessionCookies,
+  ensureValidSession,
+  signInWithPassword,
+} from '@/lib/supabase/client'
 import { hasSupabaseEnv } from '@/lib/supabase/config'
 
 const loginSchema = z.object({
-  email: z.string().email('Enter a valid email address.'),
+  email: z.string().email('Enter a valid email.'),
   password: z.string().min(1, 'Password is required.'),
   rememberMe: z.boolean().default(false),
 })
 
 type LoginValues = z.infer<typeof loginSchema>
 
-const LOGIN_ERROR =
-  'Authentication failed. Please verify your email and password and try again.'
-const ACCESS_DENIED =
-  'Access denied. Your account is not authorized to access this dashboard.'
-const CONFIG_ERROR =
-  'Sign-in is temporarily unavailable because the app setup is incomplete.'
+const LOGIN_ERROR = 'Invalid email or password.'
+const ACCESS_DENIED = 'Your account is not authorized for this dashboard.'
+const CONFIG_ERROR = 'Sign-in is unavailable. Configuration is incomplete.'
 function parseHashParams(hash: string) {
   const cleanHash = hash.startsWith('#') ? hash.slice(1) : hash
   return new URLSearchParams(cleanHash)
@@ -94,21 +95,12 @@ export function LoginForm() {
     if (error === 'access-denied') {
       clearSessionCookies()
     } else {
-      const accessToken = document.cookie
-        .split('; ')
-        .find((cookie) => cookie.startsWith('archomak_access_token='))
-        ?.split('=')[1]
-
-      if (accessToken) {
-        void fetchUser(decodeURIComponent(accessToken)).then((user) => {
-          if (user) {
-            router.replace('/dashboard')
-            router.refresh()
-          }
-        })
-      } else {
-        clearSessionCookies()
-      }
+      void ensureValidSession().then((session) => {
+        if (session) {
+          router.replace('/dashboard')
+          router.refresh()
+        }
+      })
     }
 
     if (rememberedEmail) {
@@ -122,7 +114,7 @@ export function LoginForm() {
     const error = searchParams.get('error')
 
     if (message === 'password-updated') {
-      setErrorMessage('Password updated successfully. You can now sign in.')
+      setErrorMessage('Password updated. Sign in to continue.')
       return
     }
 
@@ -137,7 +129,7 @@ export function LoginForm() {
     }
 
     if (error === 'auth') {
-      setErrorMessage(LOGIN_ERROR)
+      setErrorMessage('Your session expired. Sign in again.')
     }
   }, [searchParams])
 
@@ -166,15 +158,15 @@ export function LoginForm() {
   })
 
   return (
-    <Card className="border-white/10 bg-white/6 shadow-[0_32px_100px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+    <Card className="auth-card">
       <CardHeader className="space-y-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-400/12 text-emerald-300">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/12 text-primary">
           <ShieldCheck className="size-6" />
         </div>
         <div className="space-y-1">
-          <CardTitle className="text-2xl text-white">Admin Sign In</CardTitle>
-          <CardDescription className="text-sm leading-6 text-slate-300">
-            Sign in with your Archomak staff account to access internal operations.
+          <CardTitle className="text-2xl tracking-tight">Sign in</CardTitle>
+          <CardDescription className="text-sm leading-6">
+            Staff accounts only.
           </CardDescription>
         </div>
       </CardHeader>
@@ -182,8 +174,8 @@ export function LoginForm() {
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-5">
             {(errorMessage || configError) && (
-              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-                <AlertCircle className="mt-0.5 size-4 shrink-0 text-emerald-300" />
+              <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground">
+                <AlertCircle className="mt-0.5 size-4 shrink-0 text-primary" />
                 <p>{configError ?? errorMessage}</p>
               </div>
             )}
@@ -193,16 +185,16 @@ export function LoginForm() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-slate-200">Email Address</FormLabel>
+                  <FormLabel className="auth-label">Email</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                      <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         {...field}
                         type="email"
                         autoComplete="email"
                         placeholder="name@archomak.com"
-                        className="h-11 rounded-xl border-white/10 bg-white/5 pl-10 text-white placeholder:text-slate-400"
+                        className="auth-input"
                       />
                     </div>
                   </FormControl>
@@ -217,20 +209,17 @@ export function LoginForm() {
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center justify-between gap-4">
-                    <FormLabel className="text-slate-200">Password</FormLabel>
-                    <Link
-                      href="/forgot-password"
-                      className="text-sm text-emerald-300 transition hover:text-emerald-200"
-                    >
-                      Forgot Password?
+                    <FormLabel className="auth-label">Password</FormLabel>
+                    <Link href="/forgot-password" className="auth-link">
+                      Forgot password?
                     </Link>
                   </div>
                   <FormControl>
                     <PasswordField
                       {...field}
                       autoComplete="current-password"
-                      placeholder="Enter your password"
-                      inputClassName="h-11 rounded-xl border-white/10 bg-white/5 pr-11 text-white placeholder:text-slate-400"
+                      placeholder="Your password"
+                      inputClassName="h-11 rounded-xl border-border bg-input pr-11 text-foreground placeholder:text-muted-foreground"
                     />
                   </FormControl>
                   <FormMessage />
@@ -242,14 +231,11 @@ export function LoginForm() {
               control={form.control}
               name="rememberMe"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-2xl border border-border bg-muted/40 px-4 py-3">
                   <FormControl>
                     <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
-                  <div className="space-y-1">
-                    <Label className="text-sm text-slate-200">Remember me</Label>
-                    <p className="text-xs text-slate-400">Keep your email filled on this device.</p>
-                  </div>
+                  <Label className="text-sm text-foreground">Remember email</Label>
                 </FormItem>
               )}
             />
@@ -257,23 +243,23 @@ export function LoginForm() {
             <Button
               type="submit"
               size="lg"
-              className="h-11 w-full rounded-xl bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+              className="auth-submit"
               disabled={form.formState.isSubmitting || Boolean(configError)}
             >
               {form.formState.isSubmitting ? (
                 <>
                   <LoaderCircle className="animate-spin" />
-                  Signing In...
+                  Signing in…
                 </>
               ) : (
-                'Login'
+                'Continue'
               )}
             </Button>
           </form>
         </Form>
 
-        <p className="mt-6 text-center text-xs leading-5 text-slate-400">
-          Authorized personnel only. Access is restricted to approved Archomak staff.
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Authorized staff only.
         </p>
       </CardContent>
     </Card>
