@@ -29,7 +29,7 @@ export function SignOutButton({ className }: SignOutButtonProps) {
       className={className}
     >
       <LogOut size={16} className="mr-2" />
-      {loading ? 'Signing Out...' : 'Sign Out'}
+      {loading ? 'Signing out…' : 'Sign out'}
     </button>
   )
 }

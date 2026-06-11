@@ -35,7 +35,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
           <Search size={16} className="text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search apps, users, logs..."
+            placeholder="Search…"
             className="bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground w-full"
           />
         </div>
