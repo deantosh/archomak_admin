@@ -75,10 +75,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 p-4 lg:p-8">
       <div className="mb-8">
-        <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-2">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Live centralized view of operational data across all connected applications.
-        </p>
+        <h1 className="page-title mb-1">Dashboard</h1>
+        <p className="page-lead">Overview across connected applications.</p>
       </div>
 
       {error && (
@@ -116,7 +114,7 @@ export default function DashboardPage() {
 
       {needsAttention && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
-          <p className="text-sm font-semibold text-amber-400 mb-2">Attention needed</p>
+          <p className="text-sm font-medium text-muted-foreground mb-2">Attention needed</p>
           <p className="text-xs text-muted-foreground">
             {overview?.pending_reports ? `${overview.pending_reports} pending report(s). ` : ''}
             {overview?.failed_payments_count

@@ -54,26 +54,26 @@ export default function AIToolsPage() {
   return (
     <div className="space-y-6 p-4 lg:p-8">
       <div>
-        <h1 className="text-3xl lg:text-4xl font-bold text-foreground">AI Operations</h1>
-        <p className="text-muted-foreground mt-1">Live automation and intelligence signals across Kunanyesha</p>
+        <h1 className="page-title">AI Operations</h1>
+        <p className="page-lead mt-1">Automation signals across Kunanyesha</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-2xl p-6">
           <p className="text-sm font-medium text-muted-foreground mb-2">Automated Outputs</p>
-          <p className="text-3xl font-bold text-foreground">{reports?.completed_reports ?? '—'}</p>
+          <p className="stat-value">{reports?.completed_reports ?? '—'}</p>
           <p className="text-xs text-emerald-500 mt-2">Completed report generations</p>
         </div>
         <div className="bg-card border border-border rounded-2xl p-6">
           <p className="text-sm font-medium text-muted-foreground mb-2">Active Signals</p>
-          <p className="text-3xl font-bold text-foreground">{notifications.length}</p>
+          <p className="stat-value">{notifications.length}</p>
           <p className="text-xs text-amber-500 mt-2">
             {criticalSignals} critical, {warningSignals} warning
           </p>
         </div>
         <div className="bg-card border border-border rounded-2xl p-6">
           <p className="text-sm font-medium text-muted-foreground mb-2">Platform Intelligence Score</p>
-          <p className="text-3xl font-bold text-foreground">{summary?.app.api_health ?? 0}%</p>
+          <p className="stat-value">{summary?.app.api_health ?? 0}%</p>
           <p className="text-xs text-muted-foreground mt-2">Derived from live API health</p>
         </div>
       </div>
