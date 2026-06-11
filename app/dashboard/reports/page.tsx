@@ -59,7 +59,7 @@ export default function ReportsPage() {
     <div className="space-y-6 p-4 lg:p-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Reports</h1>
+          <h1 className="page-title">Reports</h1>
           <p className="text-muted-foreground mt-1">Live report generation visibility from Kunanyesha</p>
         </div>
         <Button>
