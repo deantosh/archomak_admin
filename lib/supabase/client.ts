@@ -2,41 +2,20 @@
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
 import { getSupabaseEnv } from '@/lib/supabase/config'
+import {
+  ACCESS_COOKIE,
+  COOKIE_MAX_AGE,
+  EXPIRES_COOKIE,
+  fetchUserWithToken,
+  getSessionExpiresAt,
+  isSessionExpiringSoon,
+  REFRESH_COOKIE,
+  requestSessionRefresh,
+  type SupabaseSession,
+  type SupabaseUser,
+} from '@/lib/supabase/session'
 
-type SupabaseUser = {
-  id: string
-  email?: string
-  app_metadata?: Record<string, unknown>
-  user_metadata?: Record<string, unknown>
-}
-
-export type SupabaseSession = {
-  access_token: string
-  refresh_token: string
-  expires_in: number
-  expires_at?: number
-  token_type?: string
-  user: SupabaseUser
-}
-
-const ACCESS_COOKIE = 'archomak_access_token'
-const REFRESH_COOKIE = 'archomak_refresh_token'
-const EXPIRES_COOKIE = 'archomak_expires_at'
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 30
-
-function getBaseHeaders() {
-  const { supabaseAnonKey } = getSupabaseEnv()
-
-  return {
-    apikey: supabaseAnonKey,
-    'Content-Type': 'application/json',
-  }
-}
-
-function getAuthUrl(path: string) {
-  const { supabaseUrl } = getSupabaseEnv()
-  return `${supabaseUrl}/auth/v1${path}`
-}
+export type { SupabaseSession, SupabaseUser }
 
 function setCookie(name: string, value: string, maxAge: number) {
   document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
@@ -46,9 +25,31 @@ function clearCookie(name: string) {
   document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`
 }
 
+function readCookie(name: string) {
+  const value = document.cookie
+    .split('; ')
+    .find((cookie) => cookie.startsWith(`${name}=`))
+    ?.split('=')
+    .slice(1)
+    .join('=')
+
+  return value ? decodeURIComponent(value) : null
+}
+
+export function getClientSessionFromCookies() {
+  const accessToken = readCookie(ACCESS_COOKIE)
+  const refreshToken = readCookie(REFRESH_COOKIE)
+  const expiresAt = Number(readCookie(EXPIRES_COOKIE) ?? 0)
+
+  return {
+    accessToken,
+    refreshToken,
+    expiresAt: Number.isFinite(expiresAt) ? expiresAt : 0,
+  }
+}
+
 export function persistSession(session: SupabaseSession) {
-  const expiresAt =
-    session.expires_at ?? Math.floor(Date.now() / 1000) + session.expires_in
+  const expiresAt = getSessionExpiresAt(session)
 
   setCookie(ACCESS_COOKIE, session.access_token, COOKIE_MAX_AGE)
   setCookie(REFRESH_COOKIE, session.refresh_token, COOKIE_MAX_AGE)
@@ -61,10 +62,85 @@ export function clearSessionCookies() {
   clearCookie(EXPIRES_COOKIE)
 }
 
+let refreshPromise: Promise<SupabaseSession | null> | null = null
+
+async function refreshSessionOnce(refreshToken: string) {
+  if (!refreshPromise) {
+    refreshPromise = requestSessionRefresh(refreshToken).finally(() => {
+      refreshPromise = null
+    })
+  }
+
+  return refreshPromise
+}
+
+export async function refreshSession() {
+  const { refreshToken } = getClientSessionFromCookies()
+
+  if (!refreshToken) {
+    return null
+  }
+
+  const session = await refreshSessionOnce(refreshToken)
+
+  if (!session) {
+    clearSessionCookies()
+    return null
+  }
+
+  persistSession(session)
+  return session
+}
+
+export async function ensureValidSession() {
+  const { accessToken, refreshToken, expiresAt } = getClientSessionFromCookies()
+
+  if (!accessToken && !refreshToken) {
+    return null
+  }
+
+  if (accessToken && expiresAt && !isSessionExpiringSoon(expiresAt)) {
+    const user = await fetchUserWithToken(accessToken)
+
+    if (user) {
+      return {
+        accessToken,
+        expiresAt,
+        user,
+      }
+    }
+  }
+
+  if (!refreshToken) {
+    clearSessionCookies()
+    return null
+  }
+
+  const session = await refreshSessionOnce(refreshToken)
+
+  if (!session) {
+    clearSessionCookies()
+    return null
+  }
+
+  persistSession(session)
+
+  return {
+    accessToken: session.access_token,
+    expiresAt: getSessionExpiresAt(session),
+    user: session.user,
+  }
+}
+
 export async function signInWithPassword(email: string, password: string) {
-  const response = await fetch(getAuthUrl('/token?grant_type=password'), {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv()
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
     method: 'POST',
-    headers: getBaseHeaders(),
+    headers: {
+      apikey: supabaseAnonKey,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ email, password }),
   })
 
@@ -91,10 +167,13 @@ export async function resetPasswordForEmail(email: string, redirectTo: string) {
 }
 
 export async function updatePassword(accessToken: string, password: string) {
-  const response = await fetch(getAuthUrl('/user'), {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv()
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
     method: 'PUT',
     headers: {
-      ...getBaseHeaders(),
+      apikey: supabaseAnonKey,
+      'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({ password }),
@@ -104,18 +183,7 @@ export async function updatePassword(accessToken: string, password: string) {
 }
 
 export async function fetchUser(accessToken: string) {
-  const response = await fetch(getAuthUrl('/user'), {
-    headers: {
-      ...getBaseHeaders(),
-      Authorization: `Bearer ${accessToken}`,
-    },
-  })
-
-  if (!response.ok) {
-    return null
-  }
-
-  return (await response.json()) as SupabaseUser
+  return fetchUserWithToken(accessToken)
 }
 
 export async function verifyRecoveryToken(tokenHash: string, type: string) {
