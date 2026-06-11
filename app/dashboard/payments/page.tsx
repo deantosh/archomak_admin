@@ -49,7 +49,7 @@ export default function PaymentsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Payments</h1>
+          <h1 className="page-title">Payments</h1>
           <p className="text-muted-foreground mt-1">Transaction history and revenue tracking</p>
         </div>
         <Button variant="outline" className="w-full sm:w-auto">
