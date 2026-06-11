@@ -127,3 +127,44 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight text-foreground;
+  }
+
+  .page-lead {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .stat-value {
+    @apply text-2xl font-semibold tabular-nums text-foreground;
+  }
+
+  .auth-shell {
+    @apply min-h-screen bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at top left, color-mix(in oklch, var(--primary) 14%, transparent), transparent 32%),
+      radial-gradient(circle at bottom right, color-mix(in oklch, var(--secondary) 12%, transparent), transparent 34%);
+  }
+
+  .auth-card {
+    @apply border-border bg-card/90 shadow-2xl backdrop-blur-xl;
+  }
+
+  .auth-input {
+    @apply h-11 rounded-xl border-border bg-input pl-10 text-foreground placeholder:text-muted-foreground;
+  }
+
+  .auth-label {
+    @apply text-foreground;
+  }
+
+  .auth-link {
+    @apply text-sm text-primary transition hover:text-primary/80;
+  }
+
+  .auth-submit {
+    @apply h-11 w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90;
+  }
+}

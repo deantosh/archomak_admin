@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 
+import { SessionRefresher } from '@/components/auth/session-refresher'
 import { DashboardHeader } from '@/components/dashboard/header'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { getDashboardAccess } from '@/lib/auth/access'
@@ -30,6 +31,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-background">
+      <SessionRefresher />
       <Sidebar />
       <DashboardHeader
         user={{
