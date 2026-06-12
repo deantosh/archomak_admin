@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 
+
 import { AdminAppProvider } from '@/components/dashboard/admin-app-provider'
 import { DashboardHeader } from '@/components/dashboard/header'
 import { Sidebar } from '@/components/dashboard/sidebar'
@@ -30,6 +31,7 @@ export default async function DashboardLayout({
   }
 
   return (
+
     <AdminAppProvider>
       <div className="min-h-screen bg-background">
         <Sidebar />

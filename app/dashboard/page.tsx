@@ -176,7 +176,7 @@ export default function DashboardPage() {
 
       {needsAttention && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
-          <p className="text-sm font-semibold text-amber-400 mb-2">Attention needed</p>
+          <p className="text-sm font-medium text-muted-foreground mb-2">Attention needed</p>
           <p className="text-xs text-muted-foreground">
             {dashboardView?.pending_reports ? `${dashboardView.pending_reports} pending report(s). ` : ''}
             {dashboardView?.failed_payments_count

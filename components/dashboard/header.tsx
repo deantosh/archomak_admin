@@ -1,5 +1,6 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import { Bell, Search, Settings } from 'lucide-react';
 import {
   DropdownMenu,
@@ -28,7 +29,12 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
     .slice(0, 2) || 'AA'
 
   return (
-    <header className="fixed top-0 right-0 left-0 lg:left-64 h-16 bg-card border-b border-border z-30">
+    <motion.header
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className="fixed top-0 right-0 left-0 lg:left-[240px] h-14 bg-background/95 border-b border-border z-30 backdrop-blur-sm"
+    >
       <div className="h-full px-4 lg:px-6 flex items-center justify-between gap-4">
         <div className="hidden md:flex flex-1 items-center gap-3">
           <div className="flex max-w-md flex-1 items-center gap-2 rounded-xl bg-muted px-3 py-2">
@@ -49,33 +55,41 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors font-semibold text-sm">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="ml-1 w-8 h-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center font-semibold text-xs hover:bg-primary/25 transition-colors"
+                style={{ fontFamily: 'var(--font-space-grotesk)' }}
+                aria-label="User menu"
+              >
                 {initials}
-              </button>
+              </motion.button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <div className="px-2 py-1.5 text-sm">
-                <p className="font-semibold text-foreground">{user.displayName}</p>
-                <p className="text-muted-foreground text-xs">{user.email}</p>
-                <p className="text-muted-foreground text-xs">{user.roleLabel}</p>
+              <div className="px-2 py-2 space-y-0.5">
+                <p className="font-semibold text-sm text-foreground leading-none">{user.displayName}</p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
+                <span className="inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase tracking-wide">
+                  {user.roleLabel}
+                </span>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Settings size={16} className="mr-2" />
+              <DropdownMenuItem className="gap-2">
+                <Settings size={14} />
                 Account Settings
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell size={16} className="mr-2" />
+              <DropdownMenuItem className="gap-2">
+                <Bell size={14} />
                 Preferences
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
+              <DropdownMenuItem asChild className="text-destructive focus:text-destructive gap-2">
                 <SignOutButton className="flex w-full items-center" />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
-    </header>
+    </motion.header>
   );
 }

@@ -212,32 +212,32 @@ export function ResetPasswordForm() {
   })
 
   return (
-    <Card className="border-white/10 bg-white/6 shadow-[0_32px_100px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+    <Card className="auth-card">
       <CardHeader className="space-y-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-400/12 text-emerald-300">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/12 text-primary">
           <LockKeyhole className="size-6" />
         </div>
         <div className="space-y-1">
-          <CardTitle className="text-2xl text-white">Reset Password</CardTitle>
-          <CardDescription className="text-sm leading-6 text-slate-300">
-            Choose a new password for your Archomak staff account.
+          <CardTitle className="text-2xl tracking-tight">New password</CardTitle>
+          <CardDescription className="text-sm leading-6">
+            Choose a password for your account.
           </CardDescription>
         </div>
       </CardHeader>
       <CardContent>
         {!ready ? (
-          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-200">
-            <LoaderCircle className="size-4 animate-spin text-emerald-300" />
-            Preparing secure recovery session...
+          <div className="flex items-center gap-3 rounded-2xl border border-border bg-muted/50 px-4 py-4 text-sm text-foreground">
+            <LoaderCircle className="size-4 animate-spin text-primary" />
+            Preparing session…
           </div>
         ) : (
           <>
             {(errorMessage || successMessage) && (
-              <div className="mb-5 flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
+              <div className="mb-5 flex items-start gap-3 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground">
                 {successMessage ? (
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-300" />
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
                 ) : (
-                  <AlertCircle className="mt-0.5 size-4 shrink-0 text-emerald-300" />
+                  <AlertCircle className="mt-0.5 size-4 shrink-0 text-primary" />
                 )}
                 <p>{successMessage ?? errorMessage}</p>
               </div>
@@ -250,16 +250,16 @@ export function ResetPasswordForm() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-slate-200">New Password</FormLabel>
+                      <FormLabel className="auth-label">Password</FormLabel>
                       <FormControl>
                         <PasswordField
                           {...field}
                           autoComplete="new-password"
-                          placeholder="Create a new password"
-                          inputClassName="h-11 rounded-xl border-white/10 bg-white/5 pr-11 text-white placeholder:text-slate-400"
+                          placeholder="New password"
+                          inputClassName="h-11 rounded-xl border-border bg-input pr-11 text-foreground placeholder:text-muted-foreground"
                         />
                       </FormControl>
-                      <p className="text-xs text-slate-400">{passwordRequirements}</p>
+                      <p className="text-xs text-muted-foreground">{passwordRequirements}</p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -270,13 +270,13 @@ export function ResetPasswordForm() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-slate-200">Confirm Password</FormLabel>
+                      <FormLabel className="auth-label">Confirm</FormLabel>
                       <FormControl>
                         <PasswordField
                           {...field}
                           autoComplete="new-password"
-                          placeholder="Confirm your new password"
-                          inputClassName="h-11 rounded-xl border-white/10 bg-white/5 pr-11 text-white placeholder:text-slate-400"
+                          placeholder="Confirm password"
+                          inputClassName="h-11 rounded-xl border-border bg-input pr-11 text-foreground placeholder:text-muted-foreground"
                         />
                       </FormControl>
                       <FormMessage />
@@ -287,16 +287,16 @@ export function ResetPasswordForm() {
                 <Button
                   type="submit"
                   size="lg"
-                  className="h-11 w-full rounded-xl bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                  className="auth-submit"
                   disabled={!recoveryReady || form.formState.isSubmitting || Boolean(successMessage)}
                 >
                   {form.formState.isSubmitting ? (
                     <>
                       <LoaderCircle className="animate-spin" />
-                      Updating Password...
+                      Updating…
                     </>
                   ) : (
-                    'Update Password'
+                    'Update password'
                   )}
                 </Button>
               </form>

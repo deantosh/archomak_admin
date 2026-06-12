@@ -68,19 +68,19 @@ export default function AIToolsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-2xl p-6">
           <p className="text-sm font-medium text-muted-foreground mb-2">Automated Outputs</p>
-          <p className="text-3xl font-bold text-foreground">{reports?.completed_reports ?? '—'}</p>
+          <p className="stat-value">{reports?.completed_reports ?? '—'}</p>
           <p className="text-xs text-emerald-500 mt-2">Completed report generations</p>
         </div>
         <div className="bg-card border border-border rounded-2xl p-6">
           <p className="text-sm font-medium text-muted-foreground mb-2">Active Signals</p>
-          <p className="text-3xl font-bold text-foreground">{notifications.length}</p>
+          <p className="stat-value">{notifications.length}</p>
           <p className="text-xs text-amber-500 mt-2">
             {criticalSignals} critical, {warningSignals} warning
           </p>
         </div>
         <div className="bg-card border border-border rounded-2xl p-6">
           <p className="text-sm font-medium text-muted-foreground mb-2">Platform Intelligence Score</p>
-          <p className="text-3xl font-bold text-foreground">{summary?.app.api_health ?? 0}%</p>
+          <p className="stat-value">{summary?.app.api_health ?? 0}%</p>
           <p className="text-xs text-muted-foreground mt-2">Derived from live API health</p>
         </div>
       </div>
