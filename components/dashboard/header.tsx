@@ -36,32 +36,23 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
       className="fixed top-0 right-0 left-0 lg:left-[240px] h-14 bg-background/95 border-b border-border z-30 backdrop-blur-sm"
     >
       <div className="h-full px-4 lg:px-6 flex items-center justify-between gap-4">
-
-        {/* Search */}
-        <div className="hidden md:flex flex-1 max-w-sm items-center gap-2.5 bg-card border border-border rounded-lg px-3 py-1.5 hover:border-primary/40 transition-colors focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/20">
-          <Search size={14} className="text-muted-foreground shrink-0" />
-          <input
-            type="text"
-            placeholder="Search…"
-            className="bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground w-full"
-          />
+        <div className="hidden md:flex flex-1 items-center gap-3">
+          <div className="flex max-w-md flex-1 items-center gap-2 rounded-xl bg-muted px-3 py-2">
+            <Search size={16} className="text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search apps, users, logs..."
+              className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            />
+          </div>
         </div>
 
-        {/* Right actions */}
-        <div className="flex items-center gap-1 ml-auto">
+        <div className="flex items-center gap-2 ml-auto">
+          <button className="relative p-2 hover:bg-muted rounded-lg transition-colors">
+            <Bell size={20} className="text-muted-foreground" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
+          </button>
 
-          {/* Notifications */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            aria-label="Notifications"
-          >
-            <Bell size={18} />
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full ring-1 ring-background" />
-          </motion.button>
-
-          {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <motion.button

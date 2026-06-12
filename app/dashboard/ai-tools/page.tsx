@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { ChartCard } from '@/components/dashboard/chart-card'
+import { useAdminApp } from '@/components/dashboard/admin-app-provider'
+import { buildAdminAppApiPath } from '@/lib/admin-app-selection'
 import {
   KunanyeshaAdminLogsResponse,
   KunanyeshaAdminNotificationsResponse,
@@ -13,6 +15,7 @@ import {
 } from '@/lib/kunanyesha-admin-types'
 
 export default function AIToolsPage() {
+  const { selectedApp, selectedAppKey } = useAdminApp()
   const [summary, setSummary] = useState<KunanyeshaAdminSummaryResponse | null>(null)
   const [reports, setReports] = useState<KunanyeshaAdminReportsSummaryResponse | null>(null)
   const [notifications, setNotifications] = useState<KunanyeshaAdminNotificationsResponse['items']>([])
@@ -20,12 +23,14 @@ export default function AIToolsPage() {
   const [health, setHealth] = useState<KunanyeshaAdminSystemHealthResponse | null>(null)
 
   useEffect(() => {
+    if (!selectedAppKey) return
+
     void Promise.all([
-      fetch('/api/kunanyesha-admin/summary', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/reports/summary', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/notifications', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/logs', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/system-health', { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('summary'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('reports/summary'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('notifications'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('logs'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('system-health'), { cache: 'no-store' }),
     ]).then(async ([summaryRes, reportsRes, notificationsRes, logsRes, healthRes]) => {
       if (summaryRes.ok) setSummary((await summaryRes.json()) as KunanyeshaAdminSummaryResponse)
       if (reportsRes.ok) setReports((await reportsRes.json()) as KunanyeshaAdminReportsSummaryResponse)
@@ -35,7 +40,7 @@ export default function AIToolsPage() {
       if (logsRes.ok) setLogs(((await logsRes.json()) as KunanyeshaAdminLogsResponse).items)
       if (healthRes.ok) setHealth((await healthRes.json()) as KunanyeshaAdminSystemHealthResponse)
     })
-  }, [])
+  }, [selectedAppKey])
 
   const chartData = useMemo(
     () => [
@@ -54,8 +59,10 @@ export default function AIToolsPage() {
   return (
     <div className="space-y-6 p-4 lg:p-8">
       <div>
-        <h1 className="page-title">AI Operations</h1>
-        <p className="page-lead mt-1">Automation signals across Kunanyesha</p>
+        <h1 className="text-3xl lg:text-4xl font-bold text-foreground">AI Operations</h1>
+        <p className="text-muted-foreground mt-1">
+          Live automation and intelligence signals across {selectedApp?.name || 'the selected application'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

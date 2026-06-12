@@ -31,7 +31,7 @@ export async function GET(
         detail:
           error instanceof Error
             ? error.message
-            : 'We could not load the connected application data right now.',
+            : 'We could not load the selected application data right now.',
       },
       { status: 502 },
     )

@@ -26,6 +26,7 @@ export default function AppsPage() {
   const [apps, setApps] = useState<AdminApplicationRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [syncingAppId, setSyncingAppId] = useState<string | null>(null)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [createLoading, setCreateLoading] = useState(false)
@@ -36,7 +37,8 @@ export default function AppsPage() {
   const [slug, setSlug] = useState('')
   const [description, setDescription] = useState('')
   const [icon, setIcon] = useState('📦')
-  const [logoUrl, setLogoUrl] = useState('')
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null)
   const [environment, setEnvironment] = useState('production')
   const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
@@ -72,6 +74,14 @@ export default function AppsPage() {
     void loadApplications()
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (logoPreviewUrl) {
+        URL.revokeObjectURL(logoPreviewUrl)
+      }
+    }
+  }, [logoPreviewUrl])
+
   const filteredApps = useMemo(
     () =>
       apps.filter((app) =>
@@ -95,6 +105,34 @@ export default function AppsPage() {
     setCreateLoading(true)
 
     try {
+      let uploadedLogoUrl: string | null = null
+
+      if (logoFile) {
+        const uploadFormData = new FormData()
+        uploadFormData.append('file', logoFile)
+        uploadFormData.append('slug', slug || normalizeSlug(name))
+
+        const uploadResponse = await fetch('/api/admin-applications/logo', {
+          method: 'POST',
+          body: uploadFormData,
+        })
+
+        const uploadPayload = (await uploadResponse.json().catch(() => null)) as
+          | { detail?: string; logoUrl?: string }
+          | null
+
+        if (!uploadResponse.ok || !uploadPayload?.logoUrl) {
+          setCreateError(
+            toUserFriendlyErrorMessage(
+              uploadPayload?.detail || 'We could not upload the logo right now.',
+            ),
+          )
+          return
+        }
+
+        uploadedLogoUrl = uploadPayload.logoUrl
+      }
+
       const response = await fetch('/api/admin-applications', {
         method: 'POST',
         headers: {
@@ -105,7 +143,7 @@ export default function AppsPage() {
           slug: slug || normalizeSlug(name),
           description,
           icon,
-          logoUrl,
+          logoUrl: uploadedLogoUrl,
           environment,
           baseUrl,
           apiKey,
@@ -128,7 +166,8 @@ export default function AppsPage() {
       setSlug('')
       setDescription('')
       setIcon('📦')
-      setLogoUrl('')
+      setLogoFile(null)
+      setLogoPreviewUrl(null)
       setEnvironment('production')
       setBaseUrl('')
       setApiKey('')
@@ -137,6 +176,44 @@ export default function AppsPage() {
       setCreateError('We could not add the application right now. Please try again shortly.')
     } finally {
       setCreateLoading(false)
+    }
+  }
+
+  function handleLogoChange(file: File | null) {
+    setLogoFile(file)
+    if (logoPreviewUrl) {
+      URL.revokeObjectURL(logoPreviewUrl)
+    }
+    setLogoPreviewUrl(file ? URL.createObjectURL(file) : null)
+  }
+
+  async function handleSyncApplication(appId: string) {
+    setCreateError(null)
+    setCreateSuccess(null)
+    setSyncingAppId(appId)
+
+    try {
+      const response = await fetch(`/api/admin-applications/${appId}/sync`, {
+        method: 'POST',
+      })
+
+      const payload = (await response.json().catch(() => null)) as
+        | { detail?: string }
+        | null
+
+      if (!response.ok) {
+        setCreateError(
+          toUserFriendlyErrorMessage(payload?.detail || 'We could not sync this application right now.'),
+        )
+        return
+      }
+
+      setCreateSuccess(payload?.detail || 'Application metrics synced successfully.')
+      await loadApplications()
+    } catch {
+      setCreateError('We could not sync this application right now. Please try again shortly.')
+    } finally {
+      setSyncingAppId(null)
     }
   }
 
@@ -203,13 +280,27 @@ export default function AppsPage() {
         </div>
       )}
 
+      {(createError || createSuccess) && !dialogOpen && (
+        <div
+          className={`rounded-lg px-3 py-2 text-sm ${
+            createError
+              ? 'bg-red-500/10 text-red-500'
+              : 'bg-emerald-500/10 text-emerald-500'
+          }`}
+        >
+          {createError || createSuccess}
+        </div>
+      )}
+
       {viewType === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredApps.map((app) => (
             <AppCard
               key={app.id}
+              id={app.id}
               name={app.name}
               icon={app.icon || '📦'}
+              logoUrl={app.logo_url}
               status={
                 app.status === 'operational'
                   ? 'operational'
@@ -224,6 +315,8 @@ export default function AppsPage() {
               revenue={app.monthly_revenue}
               lastDeployment={app.last_deployment_at || new Date().toISOString()}
               activeUsers={app.active_users}
+              syncLoading={syncingAppId === app.id}
+              onSync={handleSyncApplication}
             />
           ))}
         </div>
@@ -238,6 +331,7 @@ export default function AppsPage() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Users</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">API Health</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Revenue</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-foreground">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -245,7 +339,13 @@ export default function AppsPage() {
                   <tr key={app.id} className="border-b border-border hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <span className="text-xl">{app.icon || '📦'}</span>
+                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-border bg-white">
+                          {app.logo_url ? (
+                            <img src={app.logo_url} alt={`${app.name} logo`} className="max-h-7 max-w-7 object-contain" />
+                          ) : (
+                            <span className="text-xl">{app.icon || '📦'}</span>
+                          )}
+                        </div>
                         <div>
                           <p className="font-medium text-foreground">{app.name}</p>
                           <p className="text-xs text-muted-foreground">{app.environment}</p>
@@ -268,6 +368,16 @@ export default function AppsPage() {
                     <td className="px-6 py-4 text-sm text-foreground">{app.total_users.toLocaleString()}</td>
                     <td className="px-6 py-4 text-sm text-foreground">{app.api_health ?? 0}%</td>
                     <td className="px-6 py-4 text-sm font-semibold text-primary">${app.monthly_revenue.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSyncApplication(app.id)}
+                        disabled={syncingAppId === app.id}
+                      >
+                        {syncingAppId === app.id ? 'Syncing…' : 'Sync now'}
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -331,14 +441,19 @@ export default function AppsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="app-logo-url">Logo URL</Label>
+              <Label htmlFor="app-logo-file">Product Logo</Label>
               <Input
-                id="app-logo-url"
-                type="url"
-                value={logoUrl}
-                onChange={(event) => setLogoUrl(event.target.value)}
-                placeholder="https://..."
+                id="app-logo-file"
+                type="file"
+                accept="image/*"
+                onChange={(event) => handleLogoChange(event.target.files?.[0] || null)}
               />
+              {logoPreviewUrl && (
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3">
+                  <img src={logoPreviewUrl} alt="Selected product logo preview" className="h-12 w-12 rounded-lg object-cover" />
+                  <p className="text-sm text-muted-foreground">Logo ready to upload when you save the application.</p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

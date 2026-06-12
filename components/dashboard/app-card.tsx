@@ -9,8 +9,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 interface AppCardProps {
+  id: string;
   name: string;
   icon: string;
+  logoUrl?: string | null;
   status: 'operational' | 'warning' | 'critical';
   environment: 'production' | 'staging';
   users: number;
@@ -19,6 +21,8 @@ interface AppCardProps {
   revenue: number;
   lastDeployment: string;
   activeUsers: number;
+  syncLoading?: boolean;
+  onSync?: (appId: string) => void;
 }
 
 const statusConfig = {
@@ -39,8 +43,10 @@ function getTimeAgo(timestamp: string) {
 }
 
 export function AppCard({
+  id,
   name,
   icon,
+  logoUrl,
   status,
   environment,
   users,
@@ -49,6 +55,8 @@ export function AppCard({
   revenue,
   lastDeployment,
   activeUsers,
+  syncLoading = false,
+  onSync,
 }: AppCardProps) {
   const statusConfig_ = statusConfig[status];
 
@@ -57,7 +65,14 @@ export function AppCard({
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-start gap-3">
-          <div className="text-3xl">{icon}</div>
+          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-border bg-white">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt={`${name} logo`} className="max-h-8 max-w-8 object-contain" />
+            ) : (
+              <div className="text-3xl">{icon}</div>
+            )}
+          </div>
           <div>
             <h3 className="font-semibold text-foreground">{name}</h3>
             <div className="mt-2">
@@ -75,6 +90,9 @@ export function AppCard({
             <DropdownMenuItem>View Details</DropdownMenuItem>
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuItem>View Logs</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSync?.(id)} disabled={syncLoading}>
+              {syncLoading ? 'Syncing…' : 'Sync now'}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

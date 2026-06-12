@@ -1,9 +1,9 @@
 import 'server-only'
 
+import { cache } from 'react'
+
 import { getSupabaseAdminHeaders, getSupabaseRestUrl, hasSupabaseServiceRoleEnv } from '@/lib/supabase/admin'
 
-const baseUrl = process.env.KUNANYESHA_ADMIN_API_URL
-const apiKey = process.env.KUNANYESHA_ADMIN_API_KEY
 const KNOWN_ADMIN_ENDPOINTS = [
   'summary',
   'health',
@@ -26,10 +26,6 @@ export interface AdminAppSource {
   icon?: string
 }
 
-export function hasKunanyeshaAdminEnv() {
-  return Boolean(baseUrl && apiKey)
-}
-
 type ProductRow = {
   id: string
   name?: string | null
@@ -39,6 +35,7 @@ type ProductRow = {
 
 type ProductSettingsRow = {
   product_id: string
+  admin_api_base_url?: string | null
   settings?: Record<string, unknown> | null
 }
 
@@ -56,18 +53,23 @@ export function normalizeAdminBaseUrl(value: string) {
   return normalized
 }
 
-function getConnectionSettings(settings: Record<string, unknown> | null | undefined) {
+function getConnectionSettings(
+  settings: Record<string, unknown> | null | undefined,
+  adminApiBaseUrl?: string | null,
+) {
   const connection =
     (settings?.connection as Record<string, unknown> | undefined) ||
     (settings?.admin_api as Record<string, unknown> | undefined) ||
     {}
 
   const baseUrl =
-    typeof connection.base_url === 'string'
-      ? connection.base_url
-      : typeof connection.baseUrl === 'string'
-        ? connection.baseUrl
-        : null
+    typeof adminApiBaseUrl === 'string' && adminApiBaseUrl.trim()
+      ? adminApiBaseUrl
+      : typeof connection.base_url === 'string'
+        ? connection.base_url
+        : typeof connection.baseUrl === 'string'
+          ? connection.baseUrl
+          : null
 
   const apiKey =
     typeof connection.api_key === 'string'
@@ -90,7 +92,7 @@ function getConnectionSettings(settings: Record<string, unknown> | null | undefi
   }
 }
 
-async function fetchDatabaseAdminSources(): Promise<AdminAppSource[]> {
+const fetchDatabaseAdminSources = cache(async (): Promise<AdminAppSource[]> => {
   if (!hasSupabaseServiceRoleEnv()) {
     return []
   }
@@ -115,7 +117,7 @@ async function fetchDatabaseAdminSources(): Promise<AdminAppSource[]> {
 
   const productIds = products.map((product) => product.id).filter(Boolean)
   const settingsResponse = await fetch(
-    `${getSupabaseRestUrl('product_settings')}?select=product_id,settings&product_id=in.(${productIds.join(',')})`,
+    `${getSupabaseRestUrl('product_settings')}?select=product_id,admin_api_base_url,settings&product_id=in.(${productIds.join(',')})`,
     {
       headers: getSupabaseAdminHeaders(),
       cache: 'no-store',
@@ -127,65 +129,47 @@ async function fetchDatabaseAdminSources(): Promise<AdminAppSource[]> {
   }
 
   const settingsRows = (await settingsResponse.json()) as ProductSettingsRow[]
-  const settingsByProductId = new Map(settingsRows.map((row) => [row.product_id, row.settings ?? {}]))
+  const settingsByProductId = new Map(settingsRows.map((row) => [row.product_id, row]))
 
-  return products
-    .map((product) => {
-      const settings = settingsByProductId.get(product.id) ?? {}
-      const connection = getConnectionSettings(settings)
+  const sources: AdminAppSource[] = []
 
-      if (!product.slug || !product.name || !connection.baseUrl || !connection.apiKey || !connection.enabled) {
-        return null
-      }
+  for (const product of products) {
+    const row = settingsByProductId.get(product.id)
+    const connection = getConnectionSettings(row?.settings, row?.admin_api_base_url)
 
-      return {
-        id: product.id,
-        key: product.slug,
-        label: product.name,
-        baseUrl: normalizeAdminBaseUrl(connection.baseUrl),
-        apiKey: connection.apiKey,
-        icon: product.icon ?? '📦',
-      } satisfies AdminAppSource
+    if (!product.slug || !product.name || !connection.baseUrl || !connection.apiKey || !connection.enabled) {
+      continue
+    }
+
+    sources.push({
+      id: product.id,
+      key: product.slug,
+      label: product.name,
+      baseUrl: normalizeAdminBaseUrl(connection.baseUrl),
+      apiKey: connection.apiKey,
+      icon: product.icon ?? '📦',
     })
-    .filter((item): item is AdminAppSource => Boolean(item))
-}
+  }
+
+  return sources
+})
 
 export async function getAdminAppSources(): Promise<AdminAppSource[]> {
-  const databaseSources = await fetchDatabaseAdminSources()
+  return fetchDatabaseAdminSources()
+}
 
-  if (databaseSources.length > 0) {
-    return databaseSources
+export async function getAdminAppSourceByKey(appKey?: string | null) {
+  const sources = await getAdminAppSources()
+
+  if (!sources.length) {
+    return null
   }
 
-  const configured = process.env.ADMIN_APP_SOURCES
-
-  if (configured) {
-    try {
-      const parsed = JSON.parse(configured) as AdminAppSource[]
-      return parsed
-        .filter((item) => item?.key && item?.label && item?.baseUrl && item?.apiKey)
-        .map((item) => ({
-          ...item,
-          baseUrl: normalizeAdminBaseUrl(item.baseUrl),
-        }))
-    } catch {
-      return []
-    }
+  if (!appKey) {
+    return sources[0]
   }
 
-  if (!baseUrl || !apiKey) {
-    return []
-  }
-
-  return [
-    {
-      key: 'kunanyesha',
-      label: 'Kunanyesha',
-      baseUrl: normalizeAdminBaseUrl(baseUrl),
-      apiKey,
-      icon: '🌧️',
-    },
-  ]
+  return sources.find((source) => source.key === appKey) ?? sources[0]
 }
 
 export async function fetchAdminSource<T>(
@@ -224,22 +208,4 @@ export async function fetchAdminSource<T>(
   }
 
   return payload as T
-}
-
-export async function fetchKunanyeshaAdmin(path: string, searchParams?: URLSearchParams) {
-  if (!baseUrl || !apiKey) {
-    throw new Error('The dashboard connection is incomplete.')
-  }
-
-  return fetchAdminSource(
-    {
-      key: 'kunanyesha',
-      label: 'Kunanyesha',
-      baseUrl: normalizeAdminBaseUrl(baseUrl),
-      apiKey,
-      icon: '🌧️',
-    },
-    path,
-    searchParams,
-  )
 }

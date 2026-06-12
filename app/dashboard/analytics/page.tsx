@@ -18,7 +18,9 @@ import {
 } from 'recharts'
 
 import { ChartCard } from '@/components/dashboard/chart-card'
+import { useAdminApp } from '@/components/dashboard/admin-app-provider'
 import { Button } from '@/components/ui/button'
+import { buildAdminAppApiPath } from '@/lib/admin-app-selection'
 import {
   KunanyeshaAdminLogsResponse,
   KunanyeshaAdminPaymentsResponse,
@@ -49,24 +51,27 @@ function buildLastDays(days: number) {
 }
 
 export default function AnalyticsPage() {
+  const { selectedApp, selectedAppKey } = useAdminApp()
   const [summary, setSummary] = useState<KunanyeshaAdminSummaryResponse | null>(null)
   const [users, setUsers] = useState<KunanyeshaAdminUsersResponse['items']>([])
   const [payments, setPayments] = useState<KunanyeshaAdminPaymentsResponse['items']>([])
   const [logs, setLogs] = useState<KunanyeshaAdminLogsResponse['items']>([])
 
   useEffect(() => {
+    if (!selectedAppKey) return
+
     void Promise.all([
-      fetch('/api/kunanyesha-admin/summary', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/users', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/payments', { cache: 'no-store' }),
-      fetch('/api/kunanyesha-admin/logs', { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('summary'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('users'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('payments'), { cache: 'no-store' }),
+      fetch(buildAdminAppApiPath('logs'), { cache: 'no-store' }),
     ]).then(async ([summaryRes, usersRes, paymentsRes, logsRes]) => {
       if (summaryRes.ok) setSummary((await summaryRes.json()) as KunanyeshaAdminSummaryResponse)
       if (usersRes.ok) setUsers(((await usersRes.json()) as KunanyeshaAdminUsersResponse).items)
       if (paymentsRes.ok) setPayments(((await paymentsRes.json()) as KunanyeshaAdminPaymentsResponse).items)
       if (logsRes.ok) setLogs(((await logsRes.json()) as KunanyeshaAdminLogsResponse).items)
     })
-  }, [])
+  }, [selectedAppKey])
 
   const dailyData = useMemo(() => {
     const buckets = buildLastDays(14).map((day) => ({
@@ -138,8 +143,10 @@ export default function AnalyticsPage() {
     <div className="space-y-6 p-4 lg:p-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="page-title">Analytics</h1>
-          <p className="text-muted-foreground mt-1">Live platform trends from Kunanyesha admin data</p>
+          <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Analytics</h1>
+          <p className="text-muted-foreground mt-1">
+            Live platform trends from {selectedApp?.name || 'the selected application'}
+          </p>
         </div>
         <Button variant="outline" className="w-full sm:w-auto">
           <Calendar size={18} className="mr-2" />
