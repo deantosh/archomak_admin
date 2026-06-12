@@ -194,7 +194,7 @@ export function LoginForm() {
                         type="email"
                         autoComplete="email"
                         placeholder="name@archomak.com"
-                        className="auth-input"
+                        className="auth-input pl-10"
                       />
                     </div>
                   </FormControl>

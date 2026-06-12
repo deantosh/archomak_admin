@@ -56,32 +56,40 @@ export const REFRESH_HEADER = 'x-archomak-refresh-token'
 export const EXPIRES_HEADER = 'x-archomak-expires-at'
 
 export async function requestSessionRefresh(refreshToken: string) {
-  const response = await fetch(getAuthUrl('/token?grant_type=refresh_token'), {
-    method: 'POST',
-    headers: getBaseHeaders(),
-    body: JSON.stringify({ refresh_token: refreshToken }),
-    cache: 'no-store',
-  })
+  try {
+    const response = await fetch(getAuthUrl('/token?grant_type=refresh_token'), {
+      method: 'POST',
+      headers: getBaseHeaders(),
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      cache: 'no-store',
+    })
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return null
+    }
+
+    return (await response.json()) as SupabaseSession
+  } catch {
     return null
   }
-
-  return (await response.json()) as SupabaseSession
 }
 
 export async function fetchUserWithToken(accessToken: string) {
-  const response = await fetch(getAuthUrl('/user'), {
-    headers: {
-      ...getBaseHeaders(),
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: 'no-store',
-  })
+  try {
+    const response = await fetch(getAuthUrl('/user'), {
+      headers: {
+        ...getBaseHeaders(),
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: 'no-store',
+    })
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return null
+    }
+
+    return (await response.json()) as SupabaseUser
+  } catch {
     return null
   }
-
-  return (await response.json()) as SupabaseUser
 }
