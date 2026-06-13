@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Download } from 'lucide-react';
+import { Calendar, ChevronRight, Copy, CopyCheck, CreditCard, Download, Hash, Mail, RefreshCw, Search, X } from 'lucide-react';
 import { useAdminApp } from '@/components/dashboard/admin-app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -251,14 +251,11 @@ function PaymentDetailSheet({
 // ─── page ──────────────────────────────────────────────────────────────────
 
 export default function PaymentsPage() {
-  const [summary, setSummary] = useState<KunanyeshaAdminPaymentsSummaryResponse | null>(null);
-  const [payments, setPayments] = useState<KunanyeshaAdminPaymentItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selected, setSelected] = useState<KunanyeshaAdminPaymentItem | null>(null);
   const { selectedApp, selectedAppKey } = useAdminApp()
   const [summary, setSummary] = useState<KunanyeshaAdminPaymentsSummaryResponse | null>(null)
   const [payments, setPayments] = useState<KunanyeshaAdminPaymentItem[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [selected, setSelected] = useState<KunanyeshaAdminPaymentItem | null>(null)
 
   useEffect(() => {
     if (!selectedAppKey) return
@@ -267,13 +264,11 @@ export default function PaymentsPage() {
       fetch(buildAdminAppApiPath('payments/summary'), { cache: 'no-store' }),
       fetch(buildAdminAppApiPath('payments'), { cache: 'no-store' }),
     ]).then(async ([summaryRes, paymentsRes]) => {
-      if (summaryRes.ok) setSummary((await summaryRes.json()) as KunanyeshaAdminPaymentsSummaryResponse);
+      if (summaryRes.ok) setSummary((await summaryRes.json()) as KunanyeshaAdminPaymentsSummaryResponse)
       if (paymentsRes.ok) {
-        const data = (await paymentsRes.json()) as KunanyeshaAdminPaymentsResponse;
-        setPayments(data.items);
+        const data = (await paymentsRes.json()) as KunanyeshaAdminPaymentsResponse
+        setPayments(data.items)
       }
-    });
-  }, []);
     })
   }, [selectedAppKey])
 
@@ -427,58 +422,6 @@ export default function PaymentsPage() {
                   <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground tracking-wide">
                     Status
                   </th>
-      {/* Transactions Table */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Customer</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Application</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Method</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-semibold text-foreground">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPayments.map((payment) => (
-                <tr key={payment.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                  <td className="px-6 py-4 text-sm text-foreground">
-                    {payment.created_at ? new Date(payment.created_at).toLocaleDateString() : '—'}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-foreground">
-                    {payment.user_id || 'Unknown user'}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{selectedApp?.name || '—'}</td>
-                  <td className="px-6 py-4 text-sm font-semibold text-primary">${payment.amount.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{payment.provider || '—'}</td>
-                  <td className="px-6 py-4">
-                    <Badge
-                      variant={
-                        payment.status === 'completed'
-                          ? 'default'
-                          : payment.status === 'pending'
-                          ? 'secondary'
-                          : 'destructive'
-                      }
-                      className={
-                        payment.status === 'completed'
-                          ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/20'
-                          : payment.status === 'pending'
-                          ? 'bg-amber-500/20 text-amber-500 border-amber-500/20'
-                          : 'bg-red-500/20 text-red-500 border-red-500/20'
-                      }
-                    >
-                      {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="text-sm font-medium text-muted-foreground hover:text-foreground">
-                      {payment.reference || 'View'}
-                    </button>
-                  </td>
                 </tr>
               </thead>
               <tbody>

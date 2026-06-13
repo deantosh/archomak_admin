@@ -172,6 +172,21 @@ export async function getAdminAppSourceByKey(appKey?: string | null) {
   return sources.find((source) => source.key === appKey) ?? sources[0]
 }
 
+export function hasKunanyeshaAdminEnv() {
+  return hasSupabaseServiceRoleEnv()
+}
+
+export async function fetchKunanyeshaAdmin<T>(
+  path: string,
+  searchParams?: URLSearchParams,
+): Promise<T> {
+  const source = await getAdminAppSourceByKey()
+  if (!source) {
+    throw new Error('No admin application connection configured.')
+  }
+  return fetchAdminSource<T>(source, path, searchParams)
+}
+
 export async function fetchAdminSource<T>(
   source: AdminAppSource,
   path: string,
