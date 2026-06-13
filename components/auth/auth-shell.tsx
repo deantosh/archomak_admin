@@ -25,7 +25,8 @@ export function AuthShell({ children }: AuthShellProps) {
                   width={180}
                   height={180}
                   priority
-                  className="h-auto w-45"
+                  className="w-45"
+                  style={{ height: 'auto' }}
                 />
                 <p className="text-sm text-muted-foreground">
                   Operational intelligence
@@ -75,7 +76,8 @@ export function AuthShell({ children }: AuthShellProps) {
                   width={180}
                   height={180}
                   priority
-                  className="h-auto w-45"
+                  className="w-45"
+                  style={{ height: 'auto' }}
                 />
                 <p className="text-sm text-muted-foreground">
                   Operational intelligence
