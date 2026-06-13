@@ -85,15 +85,15 @@ export function ForgotPasswordForm() {
   })
 
   return (
-    <Card className="border-white/10 bg-white/6 shadow-[0_32px_100px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+    <Card className="auth-card">
       <CardHeader className="space-y-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-400/12 text-emerald-300">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/12 text-primary">
           <Mail className="size-6" />
         </div>
         <div className="space-y-1">
-          <CardTitle className="text-2xl text-white">Forgot Password</CardTitle>
-          <CardDescription className="text-sm leading-6 text-slate-300">
-            Enter your Archomak staff email and we&apos;ll send a secure password reset link.
+          <CardTitle className="text-2xl tracking-tight">Reset password</CardTitle>
+          <CardDescription className="text-sm leading-6">
+            We&apos;ll email you a secure link.
           </CardDescription>
         </div>
       </CardHeader>
@@ -101,8 +101,8 @@ export function ForgotPasswordForm() {
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-5">
             {(errorMessage || successMessage) && (
-              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-                <AlertCircle className="mt-0.5 size-4 shrink-0 text-emerald-300" />
+              <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground">
+                <AlertCircle className="mt-0.5 size-4 shrink-0 text-primary" />
                 <p>{successMessage ?? errorMessage}</p>
               </div>
             )}
@@ -112,16 +112,16 @@ export function ForgotPasswordForm() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-slate-200">Email Address</FormLabel>
+                  <FormLabel className="auth-label">Email</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                      <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         {...field}
                         type="email"
                         autoComplete="email"
                         placeholder="name@archomak.com"
-                        className="h-11 rounded-xl border-white/10 bg-white/5 pl-10 text-white placeholder:text-slate-400"
+                        className="auth-input"
                       />
                     </div>
                   </FormControl>
@@ -133,28 +133,25 @@ export function ForgotPasswordForm() {
             <Button
               type="submit"
               size="lg"
-              className="h-11 w-full rounded-xl bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+              className="auth-submit"
               disabled={form.formState.isSubmitting}
             >
               {form.formState.isSubmitting ? (
                 <>
                   <LoaderCircle className="animate-spin" />
-                  Sending Reset Link...
+                  Sending…
                 </>
               ) : (
-                'Send Reset Link'
+                'Send link'
               )}
             </Button>
           </form>
         </Form>
 
         <div className="mt-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm text-emerald-300 transition hover:text-emerald-200"
-          >
+          <Link href="/" className="auth-link inline-flex items-center gap-2">
             <ArrowLeft className="size-4" />
-            Back to Login
+            Back to sign in
           </Link>
         </div>
       </CardContent>

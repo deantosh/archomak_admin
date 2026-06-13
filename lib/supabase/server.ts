@@ -1,71 +1,67 @@
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 
-import { getSupabaseEnv } from '@/lib/supabase/config'
+import {
+  ACCESS_COOKIE,
+  ACCESS_HEADER,
+  EXPIRES_COOKIE,
+  EXPIRES_HEADER,
+  fetchUserWithToken,
+  isSessionExpiringSoon,
+  REFRESH_COOKIE,
+  REFRESH_HEADER,
+  requestSessionRefresh,
+  type SupabaseUser,
+} from '@/lib/supabase/session'
 
-type SupabaseUser = {
-  id: string
-  email?: string
-  app_metadata?: Record<string, unknown>
-  user_metadata?: Record<string, unknown>
-}
+async function readSessionFromRequest() {
+  const headerStore = await headers()
+  const cookieStore = await cookies()
 
-type SupabaseSession = {
-  access_token: string
-  refresh_token: string
-  expires_in: number
-  expires_at?: number
-  token_type?: string
-  user: SupabaseUser
-}
-
-const ACCESS_COOKIE = 'archomak_access_token'
-
-function getBaseHeaders() {
-  const { supabaseAnonKey } = getSupabaseEnv()
+  const accessToken =
+    headerStore.get(ACCESS_HEADER) ?? cookieStore.get(ACCESS_COOKIE)?.value ?? null
+  const refreshToken =
+    headerStore.get(REFRESH_HEADER) ?? cookieStore.get(REFRESH_COOKIE)?.value ?? null
+  const expiresAt = Number(
+    headerStore.get(EXPIRES_HEADER) ?? cookieStore.get(EXPIRES_COOKIE)?.value ?? 0,
+  )
 
   return {
-    apikey: supabaseAnonKey,
-    'Content-Type': 'application/json',
+    accessToken,
+    refreshToken,
+    expiresAt: Number.isFinite(expiresAt) ? expiresAt : 0,
   }
-}
-
-function getAuthUrl(path: string) {
-  const { supabaseUrl } = getSupabaseEnv()
-  return `${supabaseUrl}/auth/v1${path}`
-}
-
-async function fetchUser(accessToken: string) {
-  const response = await fetch(getAuthUrl('/user'), {
-    headers: {
-      ...getBaseHeaders(),
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: 'no-store',
-  })
-
-  if (!response.ok) {
-    return null
-  }
-
-  return (await response.json()) as SupabaseUser
 }
 
 export async function getAuthenticatedUser() {
-  const cookieStore = await cookies()
-  const accessToken = cookieStore.get(ACCESS_COOKIE)?.value
+  const { accessToken, refreshToken, expiresAt } = await readSessionFromRequest()
 
-  if (!accessToken) {
+  if (!accessToken && !refreshToken) {
     return null
   }
 
-  const user = await fetchUser(accessToken)
+  if (accessToken && expiresAt && !isSessionExpiringSoon(expiresAt)) {
+    const user = await fetchUserWithToken(accessToken)
 
-  if (!user) {
+    if (user) {
+      return {
+        user,
+        accessToken,
+      }
+    }
+  }
+
+  if (!refreshToken) {
+    return null
+  }
+
+  const session = await requestSessionRefresh(refreshToken)
+
+  if (!session) {
     return null
   }
 
   return {
-    user,
-    accessToken,
+    user: session.user as SupabaseUser,
+    accessToken: session.access_token,
   }
 }
