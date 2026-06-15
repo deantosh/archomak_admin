@@ -24,6 +24,7 @@ export interface AdminAppSource {
   baseUrl: string
   apiKey: string
   icon?: string
+  logoUrl?: string | null
 }
 
 type ProductRow = {
@@ -92,70 +93,102 @@ function getConnectionSettings(
   }
 }
 
+export function getEnvAdminSources(): AdminAppSource[] {
+  const baseUrl = process.env.KUNANYESHA_ADMIN_API_URL?.trim()
+  const apiKey = process.env.KUNANYESHA_ADMIN_API_KEY?.trim()
+  if (!baseUrl || !apiKey) return []
+  return [
+    {
+      key: 'kunanyesha',
+      label: 'Kunanyesha',
+      baseUrl: normalizeAdminBaseUrl(baseUrl),
+      apiKey,
+      icon: '🌦️',
+      logoUrl: '/kunanyesha-logo.png',
+    },
+  ]
+}
+
 const fetchDatabaseAdminSources = cache(async (): Promise<AdminAppSource[]> => {
   if (!hasSupabaseServiceRoleEnv()) {
     return []
   }
 
-  const productsResponse = await fetch(
-    `${getSupabaseRestUrl('products')}?select=id,name,slug,icon&order=created_at.desc`,
-    {
-      headers: getSupabaseAdminHeaders(),
-      cache: 'no-store',
-    },
-  )
+  try {
+    const productsResponse = await fetch(
+      `${getSupabaseRestUrl('products')}?select=id,name,slug,icon&order=created_at.desc`,
+      {
+        headers: getSupabaseAdminHeaders(),
+        cache: 'no-store',
+      },
+    )
 
-  if (!productsResponse.ok) {
-    return []
-  }
-
-  const products = (await productsResponse.json()) as ProductRow[]
-
-  if (!products.length) {
-    return []
-  }
-
-  const productIds = products.map((product) => product.id).filter(Boolean)
-  const settingsResponse = await fetch(
-    `${getSupabaseRestUrl('product_settings')}?select=product_id,admin_api_base_url,settings&product_id=in.(${productIds.join(',')})`,
-    {
-      headers: getSupabaseAdminHeaders(),
-      cache: 'no-store',
-    },
-  )
-
-  if (!settingsResponse.ok) {
-    return []
-  }
-
-  const settingsRows = (await settingsResponse.json()) as ProductSettingsRow[]
-  const settingsByProductId = new Map(settingsRows.map((row) => [row.product_id, row]))
-
-  const sources: AdminAppSource[] = []
-
-  for (const product of products) {
-    const row = settingsByProductId.get(product.id)
-    const connection = getConnectionSettings(row?.settings, row?.admin_api_base_url)
-
-    if (!product.slug || !product.name || !connection.baseUrl || !connection.apiKey || !connection.enabled) {
-      continue
+    if (!productsResponse.ok) {
+      return []
     }
 
-    sources.push({
-      id: product.id,
-      key: product.slug,
-      label: product.name,
-      baseUrl: normalizeAdminBaseUrl(connection.baseUrl),
-      apiKey: connection.apiKey,
-      icon: product.icon ?? '📦',
-    })
-  }
+    const products = (await productsResponse.json()) as ProductRow[]
 
-  return sources
+    if (!products.length) {
+      return []
+    }
+
+    const productIds = products.map((product) => product.id).filter(Boolean)
+    const settingsResponse = await fetch(
+      `${getSupabaseRestUrl('product_settings')}?select=product_id,admin_api_base_url,settings&product_id=in.(${productIds.join(',')})`,
+      {
+        headers: getSupabaseAdminHeaders(),
+        cache: 'no-store',
+      },
+    )
+
+    if (!settingsResponse.ok) {
+      return []
+    }
+
+    const settingsRows = (await settingsResponse.json()) as ProductSettingsRow[]
+    const settingsByProductId = new Map(settingsRows.map((row) => [row.product_id, row]))
+
+    const sources: AdminAppSource[] = []
+
+    for (const product of products) {
+      const row = settingsByProductId.get(product.id)
+      const connection = getConnectionSettings(row?.settings, row?.admin_api_base_url)
+
+      if (!product.slug || !product.name || !connection.baseUrl || !connection.apiKey || !connection.enabled) {
+        continue
+      }
+
+      sources.push({
+        id: product.id,
+        key: product.slug,
+        label: product.name,
+        baseUrl: normalizeAdminBaseUrl(connection.baseUrl),
+        apiKey: connection.apiKey,
+        icon: product.icon ?? '📦',
+      })
+    }
+
+    return sources
+  } catch {
+    return []
+  }
 })
 
 export async function getAdminAppSources(): Promise<AdminAppSource[]> {
-  return fetchDatabaseAdminSources()
+  const [dbSources, envSources] = await Promise.all([
+    fetchDatabaseAdminSources(),
+    Promise.resolve(getEnvAdminSources()),
+  ])
+
+  const merged = [...dbSources]
+  for (const envSource of envSources) {
+    if (!merged.some((s) => s.key === envSource.key)) {
+      merged.push(envSource)
+    }
+  }
+
+  return merged
 }
 
 export async function getAdminAppSourceByKey(appKey?: string | null) {
@@ -202,14 +235,24 @@ export async function fetchAdminSource<T>(
     })
   }
 
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${source.apiKey}`,
-      apikey: source.apiKey,
-    },
-    cache: 'no-store',
-  })
+  let response: Response
+  try {
+    response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${source.apiKey}`,
+        apikey: source.apiKey,
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(15_000),
+    })
+  } catch (err) {
+    const name = err instanceof Error ? err.name : ''
+    if (name === 'TimeoutError' || name === 'AbortError') {
+      throw new Error(`${source.label} did not respond within 15 seconds.`)
+    }
+    throw err
+  }
 
   const text = await response.text()
   const payload = text ? JSON.parse(text) : null

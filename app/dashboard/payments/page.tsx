@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Calendar, ChevronRight, Copy, CopyCheck, CreditCard, Download, Hash, Mail, RefreshCw, Search, X } from 'lucide-react';
 import { useAdminApp } from '@/components/dashboard/admin-app-provider';
+import { AppPicker } from '@/components/dashboard/app-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { buildAdminAppApiPath } from '@/lib/admin-app-selection';
@@ -304,6 +305,8 @@ export default function PaymentsPage() {
             Export
           </Button>
         </div>
+
+        <AppPicker className="mb-6" />
 
         {/* ── Summary cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

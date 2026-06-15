@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Search, Plus, MoreVertical, LoaderCircle } from 'lucide-react';
+import { AppPicker } from '@/components/dashboard/app-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -178,6 +179,8 @@ export default function UsersPage() {
         </Button>
       </div>
 
+      <AppPicker className="mb-6" />
+
       {/* Controls */}
       <div className="space-y-4">
         {/* Search */}
@@ -257,7 +260,7 @@ export default function UsersPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <Badge className="bg-blue-500/10 text-blue-500 border-0">
+                    <Badge className="bg-muted text-muted-foreground border-0">
                       {user.role}
                     </Badge>
                   </td>

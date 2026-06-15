@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Bell, Search, Settings } from 'lucide-react';
+import { Bell, Settings } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,17 +36,6 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
       className="fixed top-0 right-0 left-0 lg:left-[240px] h-14 bg-background/95 border-b border-border z-30 backdrop-blur-sm"
     >
       <div className="h-full px-4 lg:px-6 flex items-center justify-between gap-4">
-        <div className="hidden md:flex flex-1 items-center gap-3">
-          <div className="flex max-w-md flex-1 items-center gap-2 rounded-xl bg-muted px-3 py-2">
-            <Search size={16} className="text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search apps, users, logs..."
-              className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-            />
-          </div>
-        </div>
-
         <div className="flex items-center gap-2 ml-auto">
           <button className="relative p-2 hover:bg-muted rounded-lg transition-colors">
             <Bell size={20} className="text-muted-foreground" />

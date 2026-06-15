@@ -1,4 +1,4 @@
-import { MoreVertical, Users, Zap } from 'lucide-react';
+import { MoreVertical, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/dashboard/status-badge';
 import {
@@ -11,7 +11,6 @@ import {
 interface AppCardProps {
   id: string;
   name: string;
-  icon: string;
   logoUrl?: string | null;
   status: 'operational' | 'warning' | 'critical';
   environment: 'production' | 'staging';
@@ -19,10 +18,11 @@ interface AppCardProps {
   apiHealth: number;
   requests: number;
   revenue: number;
-  lastDeployment: string;
+  lastDeployment?: string | null;
   activeUsers: number;
   syncLoading?: boolean;
   onSync?: (appId: string) => void;
+  onViewDetails?: (appId: string) => void;
 }
 
 const statusConfig = {
@@ -31,7 +31,8 @@ const statusConfig = {
   critical: { label: 'Critical', color: 'bg-red-500/10 text-red-500' },
 };
 
-function getTimeAgo(timestamp: string) {
+function getTimeAgo(timestamp?: string | null) {
+  if (!timestamp) return '—';
   const date = new Date(timestamp);
   const now = new Date();
   const hours = Math.floor((now.getTime() - date.getTime()) / 3600000);
@@ -42,10 +43,23 @@ function getTimeAgo(timestamp: string) {
   return `${days}d ago`;
 }
 
+function AppLogo({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
+  if (logoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={logoUrl} alt={`${name} logo`} className="h-full w-full object-contain p-1" />
+    );
+  }
+  return (
+    <span className="text-lg font-bold text-muted-foreground select-none">
+      {name.charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
 export function AppCard({
   id,
   name,
-  icon,
   logoUrl,
   status,
   environment,
@@ -57,21 +71,15 @@ export function AppCard({
   activeUsers,
   syncLoading = false,
   onSync,
+  onViewDetails,
 }: AppCardProps) {
-  const statusConfig_ = statusConfig[status];
-
   return (
     <div className="bg-card border border-border rounded-2xl p-6 hover:border-primary/50 transition-all duration-200 hover:shadow-lg hover:-translate-y-1">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-border bg-white">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={`${name} logo`} className="max-h-8 max-w-8 object-contain" />
-            ) : (
-              <div className="text-3xl">{icon}</div>
-            )}
+          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted shrink-0">
+            <AppLogo name={name} logoUrl={logoUrl} />
           </div>
           <div>
             <h3 className="font-semibold text-foreground">{name}</h3>
@@ -87,9 +95,7 @@ export function AppCard({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>View Details</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem>View Logs</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onViewDetails?.(id)}>View Details</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onSync?.(id)} disabled={syncLoading}>
               {syncLoading ? 'Syncing…' : 'Sync now'}
             </DropdownMenuItem>
@@ -108,23 +114,21 @@ export function AppCard({
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div>
           <p className="text-xs text-muted-foreground mb-1">Users</p>
-          <p className="text-lg font-semibold text-foreground">{(users / 1000).toFixed(1)}K</p>
+          <p className="text-lg font-semibold text-foreground">{users.toLocaleString()}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">API Health</p>
-          <div className="flex items-center gap-1">
-            <span className={`text-lg font-semibold ${apiHealth > 98 ? 'text-emerald-500' : 'text-amber-500'}`}>
-              {apiHealth}%
-            </span>
-          </div>
+          <span className={`text-lg font-semibold ${apiHealth > 98 ? 'text-emerald-500' : 'text-amber-500'}`}>
+            {apiHealth}%
+          </span>
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Daily Requests</p>
-          <p className="text-sm text-foreground">{(requests / 1000).toFixed(0)}K</p>
+          <p className="text-sm text-foreground">{requests.toLocaleString()}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Revenue</p>
-          <p className="text-sm font-semibold text-primary">${(revenue / 1000).toFixed(1)}K</p>
+          <p className="text-sm font-semibold text-primary">${revenue.toLocaleString()}</p>
         </div>
       </div>
 
@@ -132,7 +136,7 @@ export function AppCard({
       <div className="flex items-center justify-between text-xs border-t border-border pt-3">
         <div className="flex items-center gap-1 text-muted-foreground">
           <Users size={14} />
-          <span>{(activeUsers / 1000).toFixed(1)}K active</span>
+          <span>{activeUsers.toLocaleString()} active</span>
         </div>
         <span className="text-muted-foreground">Deployed {getTimeAgo(lastDeployment)}</span>
       </div>

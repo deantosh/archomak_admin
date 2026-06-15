@@ -14,6 +14,7 @@ import {
 
 import { ChartCard } from '@/components/dashboard/chart-card'
 import { useAdminApp } from '@/components/dashboard/admin-app-provider'
+import { AppPicker } from '@/components/dashboard/app-picker'
 import { Button } from '@/components/ui/button'
 import { buildAdminAppApiPath } from '@/lib/admin-app-selection'
 import { KunanyeshaAdminReportsSummaryResponse } from '@/lib/kunanyesha-admin-types'
@@ -74,6 +75,8 @@ export default function ReportsPage() {
           Export Summary
         </Button>
       </div>
+
+      <AppPicker className="mb-6" />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-2xl p-6">

@@ -128,4 +128,10 @@ export interface KunanyeshaAdminSystemHealthResponse {
   uptime_hint?: string | null
 }
 
-export type KunanyeshaAdminHealthResponse = KunanyeshaAdminSystemHealthResponse
+export interface KunanyeshaAdminHealthResponse {
+  status: string
+  api_status: string
+  database_status: string
+  version: string
+  environment: string
+}
