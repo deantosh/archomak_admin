@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useAdminApp } from '@/components/dashboard/admin-app-provider';
+import { AppPicker } from '@/components/dashboard/app-picker';
 import { Button } from '@/components/ui/button';
 import { buildAdminAppApiPath } from '@/lib/admin-app-selection';
 import { KunanyeshaAdminNotificationItem, KunanyeshaAdminNotificationsResponse } from '@/lib/kunanyesha-admin-types';
@@ -32,6 +33,8 @@ export default function NotificationsPage() {
         </div>
         <Button variant="outline">Mark All as Read</Button>
       </div>
+
+      <AppPicker className="mb-6" />
 
       <div className="space-y-3">
         {notifications.map((notif) => (

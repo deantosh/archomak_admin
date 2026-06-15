@@ -31,7 +31,7 @@ function applySessionHeaders(
   headers.set(EXPIRES_HEADER, String(expiresAt))
 }
 
-export async function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value
   const expiresAt = Number(request.cookies.get(EXPIRES_COOKIE)?.value ?? 0)

@@ -84,7 +84,7 @@ export default function SystemHealthPage() {
         <div className="bg-card border border-border rounded-2xl p-6">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-muted-foreground">Avg Response Time</p>
-            <Clock size={18} className="text-blue-500" />
+            <Clock size={18} className="text-muted-foreground" />
           </div>
           <p className="text-3xl font-bold text-foreground">—</p>
           <p className="text-xs text-muted-foreground mt-2">Latency not exposed yet</p>

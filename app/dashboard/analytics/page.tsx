@@ -19,6 +19,7 @@ import {
 
 import { ChartCard } from '@/components/dashboard/chart-card'
 import { useAdminApp } from '@/components/dashboard/admin-app-provider'
+import { AppPicker } from '@/components/dashboard/app-picker'
 import { Button } from '@/components/ui/button'
 import { buildAdminAppApiPath } from '@/lib/admin-app-selection'
 import {
@@ -153,6 +154,8 @@ export default function AnalyticsPage() {
           Last 14 Days
         </Button>
       </div>
+
+      <AppPicker className="mb-6" />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Revenue Trend" description="Completed and attempted payments by day">

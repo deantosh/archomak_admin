@@ -106,9 +106,9 @@ export function Sidebar() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center shrink-0"
+                className="shrink-0"
               >
-                <span className="text-primary font-bold text-sm" style={{ fontFamily: 'var(--font-space-grotesk)' }}>A</span>
+                <Image src="/icon.png" alt="Archomak" width={32} height={32} className="w-8 h-8" />
               </motion.div>
             )}
           </AnimatePresence>

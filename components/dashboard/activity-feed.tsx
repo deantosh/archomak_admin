@@ -20,7 +20,7 @@ function getStatusColor(status: string) {
     case 'error':
       return 'text-red-500 bg-red-500/10';
     default:
-      return 'text-blue-500 bg-blue-500/10';
+      return 'text-muted-foreground bg-muted';
   }
 }
 

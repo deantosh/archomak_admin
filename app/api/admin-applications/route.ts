@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { AdminApplicationRecord, AdminApplicationsResponse } from '@/lib/admin-app-types'
 import { getDashboardAccess } from '@/lib/auth/access'
 import { syncApplicationSnapshot } from '@/lib/server/admin-applications'
+import { getEnvAdminSources } from '@/lib/server/kunanyesha-admin'
 import { getSupabaseAdminHeaders, getSupabaseRestUrl, hasSupabaseServiceRoleEnv } from '@/lib/supabase/admin'
 import { getAuthenticatedUser } from '@/lib/supabase/server'
 import { toUserFriendlyErrorMessage } from '@/lib/user-friendly-errors'
@@ -196,13 +197,34 @@ export async function GET() {
   try {
     const payload = await fetchApplications()
     return NextResponse.json(payload)
-  } catch (error) {
+  } catch {
+    const envSources = getEnvAdminSources()
+    if (envSources.length > 0) {
+      const items: AdminApplicationRecord[] = envSources.map((source) => ({
+        id: source.key,
+        name: source.label,
+        slug: source.key,
+        icon: source.icon ?? '📦',
+        logo_url: source.logoUrl ?? null,
+        status: 'operational',
+        environment: 'production',
+        active_users: 0,
+        total_users: 0,
+        requests_per_day: 0,
+        monthly_revenue: 0,
+        connection: {
+          base_url: source.baseUrl,
+          auth_type: 'bearer',
+          api_key: source.apiKey,
+          enabled: true,
+          health_path: '/health',
+        },
+      }))
+      return NextResponse.json({ total: items.length, items } satisfies AdminApplicationsResponse)
+    }
+
     return NextResponse.json(
-      {
-        detail: toUserFriendlyErrorMessage(
-          error instanceof Error ? error.message : 'We could not load the applications right now.',
-        ),
-      },
+      { detail: 'We could not load the applications right now.' },
       { status: 502 },
     )
   }

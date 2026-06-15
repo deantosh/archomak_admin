@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Filter } from 'lucide-react';
 import { useAdminApp } from '@/components/dashboard/admin-app-provider';
+import { AppPicker } from '@/components/dashboard/app-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { buildAdminAppApiPath } from '@/lib/admin-app-selection';
@@ -66,6 +67,8 @@ export default function LogsPage() {
           </p>
         </div>
       </div>
+
+      <AppPicker className="mb-6" />
 
       {/* Search & Filter */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
